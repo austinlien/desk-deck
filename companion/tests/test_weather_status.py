@@ -47,6 +47,20 @@ def test_weather_is_default_status() -> None:
     assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
 
 
+def test_weather_rotates_to_time_status() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+
+    weather = status_engine.select_status(now)
+    time_status = status_engine.select_status(now + timedelta(seconds=status_engine.WEATHER_HOLD_SECONDS))
+    next_weather = status_engine.select_status(
+        now + timedelta(seconds=status_engine.WEATHER_HOLD_SECONDS + status_engine.TIME_HOLD_SECONDS)
+    )
+
+    assert weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+    assert time_status == DisplayStatus(line1="9:00 AM", line2="THU JUL 16", backlight="green")
+    assert next_weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+
+
 def test_agent_done_holds_briefly_then_returns_to_weather() -> None:
     now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
     status_engine.set_agent_status_value("done", now=now)

@@ -119,13 +119,13 @@ On first use, a browser login opens and creates the ignored token file under `co
 Spotify display rules:
 
 - Manual modes, Calendar, and active agent states override Spotify.
-- Playing Spotify rotates with weather above debug inputs.
+- Playing Spotify rotates with weather and time above debug inputs.
 - Paused or inactive Spotify falls back to weather.
 - Row 1 shows the full track title and scrolls on the firmware when needed.
 - Row 2 shows the full first artist and scrolls on the firmware when needed.
 - Title and artist text is normalized to LCD-safe ASCII before display.
 - Backlight is green, using RGB `0, 210, 12` on the firmware.
-- Fitting Spotify text shows for 12 seconds, then weather shows for 5 seconds.
+- Fitting Spotify text shows for 12 seconds, then weather shows for 5 seconds, then time shows for 4 seconds.
 - Long Spotify text scrolls once to the final frame at 400 ms per frame, includes a one-screen completion buffer, holds the final frame for 2 seconds by default, includes a 2-second display sync buffer, then rotates to weather.
 - Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
 - Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
@@ -136,6 +136,7 @@ Optional rotation environment variables:
 ```powershell
 $env:DESK_DECK_SPOTIFY_HOLD_SECONDS = "12"
 $env:DESK_DECK_WEATHER_HOLD_SECONDS = "5"
+$env:DESK_DECK_TIME_HOLD_SECONDS = "4"
 $env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "2"
 $env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "2"
 $env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"

@@ -27,6 +27,7 @@ AGENT_DONE_HOLD_SECONDS = int(os.getenv("DESK_DECK_AGENT_DONE_HOLD_SECONDS", "5"
 AGENT_ACTIVE_TTL_SECONDS = int(os.getenv("DESK_DECK_AGENT_ACTIVE_TTL_SECONDS", "300"))
 SPOTIFY_HOLD_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_HOLD_SECONDS", "12"))
 WEATHER_HOLD_SECONDS = int(os.getenv("DESK_DECK_WEATHER_HOLD_SECONDS", "5"))
+TIME_HOLD_SECONDS = int(os.getenv("DESK_DECK_TIME_HOLD_SECONDS", "4"))
 SPOTIFY_SCROLL_END_HOLD_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS", "2"))
 SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS", "2"))
 SPOTIFY_INTERRUPT_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_INTERRUPT_SECONDS", "5"))
@@ -116,9 +117,9 @@ status_inputs = StatusInputs()
 calendar_source: CalendarStatusSource | None = None
 weather_source: WeatherStatusSource | None = None
 spotify_source: SpotifyStatusSource | None = None
-spotify_rotation_track_key: str | None = None
-spotify_rotation_started_at: datetime | None = None
-spotify_rotation_blocked = False
+default_rotation_key: str | None = None
+default_rotation_started_at: datetime | None = None
+default_rotation_blocked = False
 last_spotify_track_key: str | None = None
 spotify_interrupt_track_key: str | None = None
 spotify_interrupt_started_at: datetime | None = None
@@ -188,21 +189,21 @@ def reset_state() -> None:
 
 
 def reset_spotify_state() -> None:
-    reset_spotify_rotation()
+    reset_default_rotation()
     reset_spotify_interrupt()
     reset_spotify_track_baseline()
 
 
-def reset_spotify_rotation() -> None:
-    global spotify_rotation_track_key, spotify_rotation_started_at, spotify_rotation_blocked
-    spotify_rotation_track_key = None
-    spotify_rotation_started_at = None
-    spotify_rotation_blocked = False
+def reset_default_rotation() -> None:
+    global default_rotation_key, default_rotation_started_at, default_rotation_blocked
+    default_rotation_key = None
+    default_rotation_started_at = None
+    default_rotation_blocked = False
 
 
-def mark_spotify_rotation_blocked() -> None:
-    global spotify_rotation_blocked
-    spotify_rotation_blocked = True
+def mark_default_rotation_blocked() -> None:
+    global default_rotation_blocked
+    default_rotation_blocked = True
 
 
 def reset_spotify_interrupt() -> None:
@@ -279,22 +280,18 @@ def select_status(now: datetime | None = None) -> DisplayStatus:
     spotify_interrupt = select_spotify_interrupt(spotify, priority_status, now)
     if spotify_interrupt is not None:
         if priority_status is not None:
-            mark_spotify_rotation_blocked()
+            mark_default_rotation_blocked()
         return spotify_interrupt
 
     if priority_status is not None:
-        mark_spotify_rotation_blocked()
+        mark_default_rotation_blocked()
         return priority_status
 
-    if spotify.status is not None:
-        return select_rotating_spotify_or_weather(spotify, now)
-
-    reset_spotify_rotation()
-
     if has_debug_status():
+        reset_default_rotation()
         return select_debug_status()
 
-    return select_weather_status(now)
+    return select_rotating_default_status(spotify, now)
 
 
 def select_priority_status(now: datetime) -> DisplayStatus | None:
@@ -352,32 +349,50 @@ def select_spotify_interrupt(
     return None
 
 
-def select_rotating_spotify_or_weather(spotify: SpotifyState, now: datetime) -> DisplayStatus:
-    global spotify_rotation_track_key, spotify_rotation_started_at, spotify_rotation_blocked
+def select_rotating_default_status(spotify: SpotifyState, now: datetime) -> DisplayStatus:
+    global default_rotation_key, default_rotation_started_at, default_rotation_blocked
 
-    track_key = spotify_track_key(spotify)
+    rotation_key = spotify_track_key(spotify) if spotify.status is not None else "default"
     if (
-        spotify_rotation_track_key != track_key
-        or spotify_rotation_started_at is None
-        or spotify_rotation_blocked
+        default_rotation_key != rotation_key
+        or default_rotation_started_at is None
+        or default_rotation_blocked
     ):
-        spotify_rotation_track_key = track_key
-        spotify_rotation_started_at = now
-        spotify_rotation_blocked = False
+        default_rotation_key = rotation_key
+        default_rotation_started_at = now
+        default_rotation_blocked = False
 
-    spotify_status = spotify_status_for_rotation(spotify.status)
-    spotify_duration = spotify_phase_duration(spotify_status)
-    weather_duration = timedelta(seconds=WEATHER_HOLD_SECONDS)
-    cycle_duration = spotify_duration + weather_duration
-    elapsed = now - spotify_rotation_started_at
-    cycle_seconds = cycle_duration.total_seconds()
+    phases = default_status_phases(spotify, now)
+    cycle_seconds = sum(duration.total_seconds() for _, duration in phases)
     if cycle_seconds <= 0:
-        return spotify_status
+        return select_weather_status(now)
 
+    elapsed = now - default_rotation_started_at
     position = elapsed.total_seconds() % cycle_seconds
-    if position < spotify_duration.total_seconds():
-        return spotify_status
-    return select_weather_status(now)
+    for status, duration in phases:
+        duration_seconds = duration.total_seconds()
+        if position < duration_seconds:
+            return status
+        position -= duration_seconds
+    return phases[-1][0]
+
+
+def default_status_phases(spotify: SpotifyState, now: datetime) -> list[tuple[DisplayStatus, timedelta]]:
+    phases: list[tuple[DisplayStatus, timedelta]] = []
+    if spotify.status is not None:
+        spotify_status = spotify_status_for_rotation(spotify.status)
+        phases.append((spotify_status, spotify_phase_duration(spotify_status)))
+
+    phases.append((select_weather_status(now), timedelta(seconds=WEATHER_HOLD_SECONDS)))
+    phases.append((select_time_status(now), timedelta(seconds=TIME_HOLD_SECONDS)))
+    return phases
+
+
+def select_time_status(now: datetime | None = None) -> DisplayStatus:
+    current = now or datetime.now().astimezone()
+    time_text = current.strftime("%I:%M %p").lstrip("0")
+    date_text = current.strftime("%a %b %d").upper()
+    return DisplayStatus(line1=time_text, line2=date_text, backlight="green")
 
 
 def spotify_track_key(spotify: SpotifyState) -> str:

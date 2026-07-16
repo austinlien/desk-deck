@@ -89,7 +89,7 @@ ONLINE
 - Spotify title and artist text with accents or typographic punctuation is normalized to LCD-safe ASCII.
 - Firmware scrolls Spotify rows longer than 16 characters every 400 ms with brief start/end pauses.
 - Playing Spotify rotates with the compact weather screen when no higher-priority state is active.
-- Fitting Spotify text holds for the configured Spotify duration, then weather holds for the configured weather duration.
+- Fitting Spotify text holds for the configured Spotify duration, then weather holds for the configured weather duration, then time holds for the configured time duration.
 - Long Spotify text uses `scroll_once`, reaches the final frame, includes a completion buffer, holds for 2-3 seconds plus a display sync buffer, then rotates to weather.
 - Spotify song changes briefly interrupt manual, Calendar, and active agent statuses.
 - Starting active agent `working` and `waiting` statuses resets the Spotify baseline so stale Spotify state does not immediately interrupt the agent screen.
@@ -97,7 +97,7 @@ ONLINE
 - The first observed Spotify track after startup is only a baseline and does not interrupt higher-priority status.
 - Paused, inactive, non-track, or unavailable Spotify falls back to the next status source.
 - Manual mode, Calendar, and active agent states override Spotify.
-- Spotify/weather rotation overrides debug inputs when Spotify is active.
+- Spotify/weather/time rotation overrides debug inputs when Spotify is active.
 - Spotify credentials and tokens are kept out of Git under `companion/secrets/spotify/`.
 
 ## Test Procedure

@@ -53,6 +53,7 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Added a companion-side active agent status TTL so stale `working` and `waiting` states expire automatically.
 - Normalized Spotify title and artist text to LCD-safe ASCII and changed long-text Spotify rotation to wait until the final scroll frame, hold for 2 seconds, then rotate to weather.
 - Added a one-screen completion buffer to long Spotify scroll timing so the companion keeps serving the song long enough for the ESP-rendered LCD scroll to reach the final characters before weather rotation.
+- Added a 4-second time/date screen to the default rotation, so the cycle is Spotify, temps, then time when Spotify is active, or temps then time when Spotify is inactive.
 
 ## What Works
 
@@ -81,6 +82,7 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Firmware uses RGB `0, 210, 12` for the canonical `green` backlight.
 - Active agent `working` and `waiting` states self-clear after `DESK_DECK_AGENT_ACTIVE_TTL_SECONDS`, defaulting to 300 seconds.
 - Spotify display text avoids unsupported LCD characters and long rows reach the final scroll frame, hold briefly, then rotate to weather.
+- Default low-priority display rotates weather with a time/date screen.
 
 ## Blocked / Unknown
 
@@ -109,6 +111,8 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Follow-up long-scroll completion buffer companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 41 tests passed.
 - Follow-up long-scroll completion buffer firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted.
 - Reduced Spotify final-frame hold from 3 seconds to 2 seconds; companion regression and firmware regression passed, and the live companion was restarted.
+- Default time screen companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 42 tests passed.
+- Default time screen firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted and sampled rotating temps, time/date, and Spotify.
 
 ## Next Steps
 

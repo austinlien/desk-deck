@@ -74,10 +74,12 @@ def test_spotify_rotates_to_weather_after_default_hold() -> None:
 
     first = status_engine.select_status(now)
     weather = status_engine.select_status(now + timedelta(seconds=12))
-    next_spotify = status_engine.select_status(now + timedelta(seconds=17))
+    time_status = status_engine.select_status(now + timedelta(seconds=17))
+    next_spotify = status_engine.select_status(now + timedelta(seconds=21))
 
     assert first == DisplayStatus(line1="Song", line2="Artist", backlight="green")
     assert weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+    assert time_status == DisplayStatus(line1="9:00 AM", line2="THU JUL 16", backlight="green")
     assert next_spotify == DisplayStatus(line1="Song", line2="Artist", backlight="green")
 
 
@@ -118,7 +120,7 @@ def test_spotify_track_change_resets_rotation_to_spotify() -> None:
 
     source.status = DisplayStatus(line1="Song B", line2="Artist", backlight="green")
 
-    assert status_engine.select_status(now + timedelta(seconds=13)) == DisplayStatus(
+    assert status_engine.select_status(now + timedelta(seconds=17)) == DisplayStatus(
         line1="Song B",
         line2="Artist",
         backlight="green",

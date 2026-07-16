@@ -126,7 +126,7 @@ Spotify display rules:
 - Title and artist text is normalized to LCD-safe ASCII before display.
 - Backlight is green, using RGB `0, 210, 12` on the firmware.
 - Fitting Spotify text shows for 4 seconds, then weather shows for 5 seconds, then time shows for 4 seconds.
-- Long Spotify text scrolls once to the final frame at 400 ms per frame, includes a one-screen completion buffer, holds the final frame for 2 seconds by default, includes a 2-second display sync buffer, then rotates to weather.
+- Long Spotify text scrolls once to the final frame at 400 ms per frame, holds the final frame briefly, then rotates to weather.
 - Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
 - Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
 - Starting `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; later track changes still interrupt briefly.
@@ -137,8 +137,8 @@ Optional rotation environment variables:
 $env:DESK_DECK_SPOTIFY_HOLD_SECONDS = "4"
 $env:DESK_DECK_WEATHER_HOLD_SECONDS = "5"
 $env:DESK_DECK_TIME_HOLD_SECONDS = "4"
-$env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "2"
-$env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "2"
+$env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "1"
+$env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "0"
 $env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"
 ```
 

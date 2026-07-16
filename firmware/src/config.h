@@ -21,7 +21,7 @@ constexpr unsigned long SENSOR_POST_INTERVAL_MS = 60000;
 constexpr unsigned long HTTP_TIMEOUT_MS = 3000;
 constexpr unsigned long FLASH_INTERVAL_MS = 500;
 constexpr unsigned long SCROLL_INTERVAL_MS = 400;
-constexpr unsigned long SCROLL_ONCE_END_HOLD_MS = 3000;
+constexpr unsigned long SCROLL_ONCE_END_HOLD_MS = 1500;
 constexpr int SCROLL_PAUSE_FRAMES = 2;
 
 constexpr const char* BRING_UP_LINE_1 = "DESK DECK";

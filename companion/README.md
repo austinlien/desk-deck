@@ -74,9 +74,10 @@ Optional environment variables:
 $env:DESK_DECK_WEATHER_LOCATION = "San Jose, CA"
 $env:DESK_DECK_INSIDE_TEMP_OFFSET_F = "0"
 $env:DESK_DECK_AGENT_DONE_HOLD_SECONDS = "5"
+$env:DESK_DECK_AGENT_ACTIVE_TTL_SECONDS = "300"
 ```
 
-`AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset or changed.
+`AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset, changed, or the active-state TTL expires.
 
 ## Spotify MVP
 
@@ -89,7 +90,16 @@ Spotify support uses the Spotify Web API to show the currently playing track. It
 http://127.0.0.1:8888/callback
 ```
 
-3. Set these environment variables before starting the companion server:
+3. Copy the local environment template and fill in the Spotify values:
+
+```powershell
+Copy-Item .\local-env.example.ps1 .\secrets\local-env.ps1
+notepad .\secrets\local-env.ps1
+```
+
+The `companion/secrets/local-env.ps1` file is ignored by Git and is loaded by the repo-local startup script.
+
+Equivalent environment variables:
 
 ```powershell
 $env:DESK_DECK_SPOTIFY_CLIENT_ID = "your_spotify_client_id"
@@ -109,17 +119,35 @@ On first use, a browser login opens and creates the ignored token file under `co
 Spotify display rules:
 
 - Manual modes, Calendar, and active agent states override Spotify.
-- Playing Spotify overrides debug inputs and weather.
+- Playing Spotify rotates with weather above debug inputs.
 - Paused or inactive Spotify falls back to weather.
 - Row 1 shows the full track title and scrolls on the firmware when needed.
 - Row 2 shows the full first artist and scrolls on the firmware when needed.
-- Backlight is blue.
+- Title and artist text is normalized to LCD-safe ASCII before display.
+- Backlight is green, using RGB `0, 210, 12` on the firmware.
+- Fitting Spotify text shows for 12 seconds, then weather shows for 5 seconds.
+- Long Spotify text scrolls once to the final frame at 400 ms per frame, holds there for 3 seconds by default, includes a 2-second display sync buffer, then rotates to weather.
+- Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
+- Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
+- Starting `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; later track changes still interrupt briefly.
+
+Optional rotation environment variables:
+
+```powershell
+$env:DESK_DECK_SPOTIFY_HOLD_SECONDS = "12"
+$env:DESK_DECK_WEATHER_HOLD_SECONDS = "5"
+$env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "3"
+$env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "2"
+$env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"
+```
 
 ## Run
 
 ```powershell
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\scripts\start-companion.ps1
 ```
+
+Run this command from the repository root. It loads `companion/secrets/local-env.ps1` when present, then starts Uvicorn from the companion directory.
 
 Find the Windows computer's LAN IP with:
 
@@ -152,16 +180,16 @@ online        DESK DECK / ONLINE / green
 idle          IDLE / READY / green
 meeting_soon  MEETING / IN 5 / yellow
 meeting       IN A MEETING / BUSY / red
-music         NOW PLAYING / TEST TRACK / blue
+music         NOW PLAYING / TEST TRACK / green
 notify        SERVER TEST / NOTICE / purple
-spotify_paused PAUSED / TEST TRACK / blue
+spotify_paused PAUSED / TEST TRACK / green
 ```
 
 Manual modes override debug inputs until reset.
 
 ## Agent Status Light
 
-Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset.
+Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset. Active `working` and `waiting` states also expire after `DESK_DECK_AGENT_ACTIVE_TTL_SECONDS`, defaulting to 300 seconds, so the display recovers if an agent run exits without clearing its state.
 
 Preferred repo-local scripts:
 

@@ -15,6 +15,7 @@ struct DisplayState {
   RgbColor backlight;
   bool flashBacklight;
   bool scrollText;
+  bool scrollOnce;
 };
 
 RgbColor colorFromName(const String& colorName);

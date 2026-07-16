@@ -24,6 +24,15 @@ class SpotifyStatusSource(Protocol):
 
 
 AGENT_DONE_HOLD_SECONDS = int(os.getenv("DESK_DECK_AGENT_DONE_HOLD_SECONDS", "5"))
+AGENT_ACTIVE_TTL_SECONDS = int(os.getenv("DESK_DECK_AGENT_ACTIVE_TTL_SECONDS", "300"))
+SPOTIFY_HOLD_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_HOLD_SECONDS", "12"))
+WEATHER_HOLD_SECONDS = int(os.getenv("DESK_DECK_WEATHER_HOLD_SECONDS", "5"))
+SPOTIFY_SCROLL_END_HOLD_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS", "3"))
+SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS", "2"))
+SPOTIFY_INTERRUPT_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_INTERRUPT_SECONDS", "5"))
+LCD_COLUMNS = 16
+SCROLL_INTERVAL_SECONDS = 0.4
+SCROLL_PAUSE_FRAMES = 2
 
 AGENT_STATUSES: dict[str, DisplayStatus] = {
     "working": DisplayStatus(
@@ -68,7 +77,7 @@ STATUS_MODES: dict[str, DisplayStatus] = {
     "music": DisplayStatus(
         line1="NOW PLAYING",
         line2="TEST TRACK",
-        backlight="blue",
+        backlight="green",
     ),
     "notify": DisplayStatus(
         line1="SERVER TEST",
@@ -78,7 +87,7 @@ STATUS_MODES: dict[str, DisplayStatus] = {
     "spotify_paused": DisplayStatus(
         line1="PAUSED",
         line2="TEST TRACK",
-        backlight="blue",
+        backlight="green",
     ),
 }
 
@@ -100,11 +109,19 @@ CALENDAR_MEETING_STARTED = DisplayStatus(
 
 active_mode: str | None = None
 agent_status: str | None = None
+agent_updated_at: datetime | None = None
 agent_done_at: datetime | None = None
 status_inputs = StatusInputs()
 calendar_source: CalendarStatusSource | None = None
 weather_source: WeatherStatusSource | None = None
 spotify_source: SpotifyStatusSource | None = None
+spotify_rotation_track_key: str | None = None
+spotify_rotation_started_at: datetime | None = None
+spotify_rotation_blocked = False
+last_spotify_track_key: str | None = None
+spotify_interrupt_track_key: str | None = None
+spotify_interrupt_started_at: datetime | None = None
+spotify_interrupt_status: DisplayStatus | None = None
 
 
 def set_calendar_source(source: CalendarStatusSource | None) -> None:
@@ -123,9 +140,30 @@ def set_spotify_source(source: SpotifyStatusSource | None) -> None:
 
 
 def set_agent_status_value(state: str | None, now: datetime | None = None) -> None:
-    global agent_status, agent_done_at
+    global agent_status, agent_updated_at, agent_done_at
+    current = now or datetime.now().astimezone()
     agent_status = state
-    agent_done_at = (now or datetime.now().astimezone()) if state == "done" else None
+    agent_updated_at = current if state in {"working", "waiting"} else None
+    agent_done_at = current if state == "done" else None
+    if state in {"working", "waiting"}:
+        reset_spotify_interrupt()
+        reset_spotify_track_baseline()
+
+
+def get_agent_status_value(now: datetime | None = None) -> str | None:
+    current = now or datetime.now().astimezone()
+    if agent_status in {"working", "waiting"} and is_active_agent_status_fresh(current):
+        return agent_status
+    if agent_status == "done" and agent_done_at is not None:
+        if current - agent_done_at < timedelta(seconds=AGENT_DONE_HOLD_SECONDS):
+            return "done"
+    return None
+
+
+def is_active_agent_status_fresh(now: datetime) -> bool:
+    if agent_updated_at is None:
+        return False
+    return now - agent_updated_at < timedelta(seconds=AGENT_ACTIVE_TTL_SECONDS)
 
 
 def set_active_mode(mode_name: str | None) -> None:
@@ -139,11 +177,43 @@ def set_status_inputs(inputs: StatusInputs) -> None:
 
 
 def reset_state() -> None:
-    global active_mode, agent_status, agent_done_at, status_inputs
+    global active_mode, agent_status, agent_updated_at, agent_done_at, status_inputs
     active_mode = None
     agent_status = None
+    agent_updated_at = None
     agent_done_at = None
     status_inputs = StatusInputs()
+    reset_spotify_state()
+
+
+def reset_spotify_state() -> None:
+    reset_spotify_rotation()
+    reset_spotify_interrupt()
+    reset_spotify_track_baseline()
+
+
+def reset_spotify_rotation() -> None:
+    global spotify_rotation_track_key, spotify_rotation_started_at, spotify_rotation_blocked
+    spotify_rotation_track_key = None
+    spotify_rotation_started_at = None
+    spotify_rotation_blocked = False
+
+
+def mark_spotify_rotation_blocked() -> None:
+    global spotify_rotation_blocked
+    spotify_rotation_blocked = True
+
+
+def reset_spotify_interrupt() -> None:
+    global spotify_interrupt_track_key, spotify_interrupt_started_at, spotify_interrupt_status
+    spotify_interrupt_track_key = None
+    spotify_interrupt_started_at = None
+    spotify_interrupt_status = None
+
+
+def reset_spotify_track_baseline() -> None:
+    global last_spotify_track_key
+    last_spotify_track_key = None
 
 
 def select_debug_status() -> DisplayStatus:
@@ -203,6 +273,30 @@ def select_spotify_status() -> SpotifyState:
 
 def select_status(now: datetime | None = None) -> DisplayStatus:
     now = now or datetime.now().astimezone()
+    priority_status = select_priority_status(now)
+    spotify = select_spotify_status()
+    spotify_interrupt = select_spotify_interrupt(spotify, priority_status, now)
+    if spotify_interrupt is not None:
+        if priority_status is not None:
+            mark_spotify_rotation_blocked()
+        return spotify_interrupt
+
+    if priority_status is not None:
+        mark_spotify_rotation_blocked()
+        return priority_status
+
+    if spotify.status is not None:
+        return select_rotating_spotify_or_weather(spotify, now)
+
+    reset_spotify_rotation()
+
+    if has_debug_status():
+        return select_debug_status()
+
+    return select_weather_status(now)
+
+
+def select_priority_status(now: datetime) -> DisplayStatus | None:
     if active_mode is not None:
         return STATUS_MODES[active_mode]
 
@@ -210,20 +304,125 @@ def select_status(now: datetime | None = None) -> DisplayStatus:
     if calendar.status is not None:
         return calendar.status
 
-    if agent_status in {"working", "waiting"}:
+    if agent_status in {"working", "waiting"} and is_active_agent_status_fresh(now):
         return AGENT_STATUSES[agent_status]
     if agent_status == "done" and agent_done_at is not None:
         if now - agent_done_at < timedelta(seconds=AGENT_DONE_HOLD_SECONDS):
             return AGENT_STATUSES["done"]
 
-    spotify = select_spotify_status()
-    if spotify.status is not None:
-        return spotify.status
+    return None
 
-    if has_debug_status():
-        return select_debug_status()
 
+def select_spotify_interrupt(
+    spotify: SpotifyState,
+    interrupted_status: DisplayStatus | None,
+    now: datetime,
+) -> DisplayStatus | None:
+    global last_spotify_track_key, spotify_interrupt_track_key, spotify_interrupt_started_at, spotify_interrupt_status
+
+    if spotify.status is None:
+        reset_spotify_interrupt()
+        reset_spotify_track_baseline()
+        return None
+
+    track_key = spotify_track_key(spotify)
+    if (
+        spotify_interrupt_track_key == track_key
+        and spotify_interrupt_started_at is not None
+        and spotify_interrupt_status is not None
+    ):
+        if now - spotify_interrupt_started_at < timedelta(seconds=SPOTIFY_INTERRUPT_SECONDS):
+            return spotify_interrupt_status
+        reset_spotify_interrupt()
+
+    if track_key != last_spotify_track_key:
+        previous_track_key = last_spotify_track_key
+        last_spotify_track_key = track_key
+        reset_spotify_interrupt()
+        if previous_track_key is not None and interrupted_status is not None:
+            spotify_interrupt_track_key = track_key
+            spotify_interrupt_started_at = now
+            spotify_interrupt_status = spotify_status_for_interrupt(
+                spotify.status,
+                interrupted_status.backlight,
+            )
+            return spotify_interrupt_status
+
+    return None
+
+
+def select_rotating_spotify_or_weather(spotify: SpotifyState, now: datetime) -> DisplayStatus:
+    global spotify_rotation_track_key, spotify_rotation_started_at, spotify_rotation_blocked
+
+    track_key = spotify_track_key(spotify)
+    if (
+        spotify_rotation_track_key != track_key
+        or spotify_rotation_started_at is None
+        or spotify_rotation_blocked
+    ):
+        spotify_rotation_track_key = track_key
+        spotify_rotation_started_at = now
+        spotify_rotation_blocked = False
+
+    spotify_status = spotify_status_for_rotation(spotify.status)
+    spotify_duration = spotify_phase_duration(spotify_status)
+    weather_duration = timedelta(seconds=WEATHER_HOLD_SECONDS)
+    cycle_duration = spotify_duration + weather_duration
+    elapsed = now - spotify_rotation_started_at
+    cycle_seconds = cycle_duration.total_seconds()
+    if cycle_seconds <= 0:
+        return spotify_status
+
+    position = elapsed.total_seconds() % cycle_seconds
+    if position < spotify_duration.total_seconds():
+        return spotify_status
     return select_weather_status(now)
+
+
+def spotify_track_key(spotify: SpotifyState) -> str:
+    if spotify.track is not None:
+        return f"{spotify.track.title}\n{spotify.track.artist}"
+    if spotify.status is None:
+        return ""
+    return f"{spotify.status.line1}\n{spotify.status.line2}"
+
+
+def spotify_status_for_rotation(status: DisplayStatus | None) -> DisplayStatus:
+    if status is None:
+        return STATUS_MODES["online"]
+
+    effect = "scroll_once" if spotify_status_needs_scroll(status) else "solid"
+    return DisplayStatus(
+        line1=status.line1,
+        line2=status.line2,
+        backlight=status.backlight,
+        effect=effect,
+    )
+
+
+def spotify_status_for_interrupt(status: DisplayStatus, inherited_backlight: str) -> DisplayStatus:
+    effect = "scroll_once" if spotify_status_needs_scroll(status) else "solid"
+    return DisplayStatus(
+        line1=status.line1,
+        line2=status.line2,
+        backlight=inherited_backlight,
+        effect=effect,
+    )
+
+
+def spotify_phase_duration(status: DisplayStatus) -> timedelta:
+    overflow = max(len(status.line1), len(status.line2)) - LCD_COLUMNS
+    if overflow <= 0:
+        return timedelta(seconds=SPOTIFY_HOLD_SECONDS)
+
+    scroll_seconds = (SCROLL_PAUSE_FRAMES + overflow) * SCROLL_INTERVAL_SECONDS
+    return timedelta(
+        seconds=scroll_seconds + SPOTIFY_SCROLL_END_HOLD_SECONDS + SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS
+    )
+
+
+def spotify_status_needs_scroll(status: DisplayStatus) -> bool:
+    return len(status.line1) > LCD_COLUMNS or len(status.line2) > LCD_COLUMNS
 
 
 def calendar_status_from_event_window(

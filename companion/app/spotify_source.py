@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import time
+import unicodedata
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -83,7 +84,7 @@ class SpotifySource:
             status = DisplayStatus(
                 line1=_normalize_line(title),
                 line2=_normalize_line(artist),
-                backlight="blue",
+                backlight="green",
                 effect="scroll",
             )
             return SpotifyState(
@@ -193,7 +194,30 @@ class SpotifySource:
 
 
 def _normalize_line(value: str) -> str:
-    return " ".join(value.split()).strip()
+    replacements = {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2026": "...",
+        "\u00d7": "x",
+        "\u00f8": "o",
+        "\u00d8": "O",
+        "\u00df": "ss",
+        "\u00e6": "ae",
+        "\u00c6": "AE",
+        "\u0153": "oe",
+        "\u0152": "OE",
+    }
+    normalized = value
+    for source, replacement in replacements.items():
+        normalized = normalized.replace(source, replacement)
+
+    normalized = unicodedata.normalize("NFKD", normalized)
+    ascii_line = normalized.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_line.split()).strip()
 
 
 def _with_expiry(token: dict[str, Any]) -> dict[str, Any]:

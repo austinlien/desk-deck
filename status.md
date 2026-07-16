@@ -44,6 +44,14 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Added a short Google Calendar event cache/backoff so faster ESP32 polling does not call Calendar on every `/api/status` request.
 - Added companion tests for Calendar timing, event filtering, and override priority.
 - Updated README and docs for Calendar setup, behavior, and validation.
+- Added companion-side Spotify/weather rotation with configurable Spotify, weather, and scroll-end hold durations.
+- Added firmware-side `scroll_once` support for long Spotify rows that should stop on the final frame before rotation.
+- Changed Spotify display statuses to use green instead of blue and tuned firmware green to RGB `0, 210, 12`.
+- Added `scripts/start-companion.ps1` and `companion/local-env.example.ps1` so local Spotify credentials can be stored once in ignored `companion/secrets/local-env.ps1`.
+- Added Spotify song-skip interrupts over manual, Calendar, and active agent statuses with inherited backlight color.
+- Tested temporary LCD green comparison modes and selected RGB `0, 210, 12` as the canonical firmware green.
+- Added a companion-side active agent status TTL so stale `working` and `waiting` states expire automatically.
+- Normalized Spotify title and artist text to LCD-safe ASCII and changed long-text Spotify rotation to wait until the final scroll frame, hold for 3 seconds, then rotate to weather.
 
 ## What Works
 
@@ -64,8 +72,14 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Calendar status takes priority over agent status while preserving the agent state for later resume.
 - Companion can show `CHIP 68F` / `OUT 74F 45%` as the default status.
 - Firmware can post chip temperature readings to the companion without a new local secret.
-- Companion can show full Spotify track title and artist with blue backlight when playback is active.
+- Companion can show full Spotify track title and artist with green backlight when playback is active.
 - Firmware can render solid, flashing backlight, and scrolling text effects from companion JSON.
+- Companion can rotate active Spotify playback with the default weather screen.
+- Firmware can render one-pass scrolling text with `effect: scroll_once`.
+- Companion can briefly show a newly skipped-to Spotify song over higher-priority statuses, then return to normal priority.
+- Firmware uses RGB `0, 210, 12` for the canonical `green` backlight.
+- Active agent `working` and `waiting` states self-clear after `DESK_DECK_AGENT_ACTIVE_TTL_SECONDS`, defaulting to 300 seconds.
+- Spotify display text avoids unsupported LCD characters and long rows reach the final scroll frame, hold briefly, then rotate to weather.
 
 ## Blocked / Unknown
 
@@ -77,15 +91,6 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 
 ## TBD
 
-- Implement Spotify plus current temperatures as a rotating default screen.
-  - When Spotify text fits without scrolling, hold the Spotify screen for a configurable duration, then show the current temperature screen for a configurable duration.
-  - When Spotify text needs scrolling, scroll to the end, hold the final frame for a configurable duration, then show the current temperature screen for a configurable duration.
-  - Resolve this TBD after the rotation behavior is implemented, tested, and validated on the LCD.
-- Implement Spotify song-skip interrupt behavior.
-  - When the currently playing Spotify track changes, briefly show the new song no matter what higher-priority event/status is currently on screen.
-  - Keep the Spotify text screen using the backlight color of the interrupted event/status rather than forcing Spotify blue.
-  - After the short song-change display window, return to the interrupted event/status.
-  - Resolve this TBD after skip detection, interrupt priority, color inheritance, return behavior, and LCD validation are implemented.
 - Explore a current-time secondary display mode.
   - Consider showing current time alongside another useful context value, such as elapsed time in a game/session.
   - Define the source of the secondary value, priority rules, and LCD layout before implementation.
@@ -93,66 +98,19 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 
 ## Validation
 
-- Confirmed expected project files were created.
-- Attempted `platformio run` from `firmware/`; command failed because PlatformIO is not installed on PATH.
-- User built and uploaded through VS Code PlatformIO successfully.
-- Serial Monitor showed LCD text address `0x3E` and RGB address `0x2D`, matching the firmware assumptions.
-- Latest attached PlatformIO output confirms a clean build, successful upload to `COM5`, successful reset, and I2C detection of the LCD.
-- Local validation with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run` completed successfully.
-- Refactor validation with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run` completed successfully.
-- Refactor upload attempt found `COM5` but failed because the port was busy or locked by another task.
-- Refactored firmware uploaded successfully after closing PlatformIO/serial tasks.
-- Monitor command was attempted after upload but did not capture startup output before the command timeout.
-- User confirmed the LCD still displays `DESK DECK` and `HARDWARE OK` after the refactor upload.
-- Firmware Wi-Fi MVP build completed successfully with PlatformIO.
-- Companion dependencies installed successfully in a CPython 3.11 venv.
-- Companion status function returned `{'line1': 'DESK DECK', 'line2': 'ONLINE', 'backlight': 'green'}`.
-- Companion FastAPI server responded locally at `http://127.0.0.1:8000/api/status` with `{"line1":"DESK DECK","line2":"ONLINE","backlight":"green"}`.
-- Wi-Fi MVP firmware uploaded successfully to the ESP32 after stopping lingering PlatformIO processes.
-- Serial monitor command was attempted after upload but did not capture output before timeout.
-- User confirmed the LCD reached `DESK DECK` / `ONLINE`.
-- Updated Wi-Fi connected LCD screen to avoid displaying the ESP32 IP address; IP remains in Serial logs.
-- No-IP display tweak uploaded successfully to the ESP32.
-- Companion endpoint was rechecked locally and returned `DESK DECK` / `ONLINE`.
-- Companion status mode validation passed with FastAPI `TestClient`.
-- Live companion server was restarted with the mode endpoints.
-- `GET /api/status/modes` lists all configured modes.
-- Invalid mode requests return HTTP 404.
-- Live server switched to `meeting` and back to `online`.
-- Firmware build still passes; no firmware changes were required for this milestone.
-- Status engine validation passed with FastAPI `TestClient`.
-- Live companion server was restarted with debug input endpoints.
-- Live debug inputs selected `IN A MEETING` / `BUSY` while Spotify was also active, confirming meeting priority.
-- Live debug state was reset to default `DESK DECK` / `ONLINE`.
-- Agent status bridge validation passed with FastAPI `TestClient`.
-- Firmware build still passes; no firmware changes were required for the agent bridge.
-- Live companion server was restarted with agent endpoints.
-- Live agent endpoints returned `AGENT` / `WORKING`, `AGENT` / `WAITING`, and `AGENT` / `DONE`.
-- Invalid agent status requests return HTTP 404.
-- Live agent status was reset to default `DESK DECK` / `ONLINE`.
-- Agent status scripts validated `working`, `waiting`, `done`, and reset against the live companion server.
-- Agent status scripts fail softly with a warning when the companion server is unavailable.
-- Firmware build regression still passes after adding the scripts and `AGENTS.md`.
-- Companion dependencies installed successfully in `.venv311`, including Google Calendar client libraries and pytest.
-- Calendar MVP validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 8 tests passed.
-- Firmware flash-effect build validation passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
-- Default weather validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 15 tests passed.
-- Firmware sensor POST build validation passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
-- Spotify MVP validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
-- Spotify scroll validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
-- Spotify scroll firmware build passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
-- Spotify scroll firmware upload succeeded to `COM5` with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run -t upload`.
-- Pre-push companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
-- Pre-push firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
-- Pre-push live API smoke test passed for status modes, agent states, manual priority, debug input storage, weather sensor update, Spotify scroll status, and Calendar status read.
-- Fast Spotify refresh validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 24 tests passed.
-- Fast Spotify refresh firmware build passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
-- Fast Spotify refresh firmware upload succeeded to `COM5` with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run -t upload`.
+- Companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 41 tests passed.
+- Firmware build passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Firmware upload to `COM5` succeeded with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run -t upload --upload-port COM5`.
+- Live companion was restarted with `.\scripts\start-companion.ps1 -RestartExisting`.
+- Live API smoke tests confirmed `/api/status`, `/api/spotify/status`, `/api/agent/status`, and `/api/status/modes` respond locally.
+- Live `agent-working` baseline stayed on `AGENT` / `WORKING`; a later Spotify skip was manually confirmed to interrupt briefly and then return.
+- User confirmed the final Spotify scrolling, skip interrupt, and agent behavior looked good on the LCD.
 
 ## Next Steps
 
 1. Create a Spotify app and configure `http://127.0.0.1:8888/callback` as a redirect URI.
-2. Start the companion with Spotify client ID and secret environment variables.
-3. Complete the browser login from `GET /api/spotify/status`.
-4. Play a track and confirm the LCD shows title and artist in blue.
-5. Confirm the LCD module's I2C electrical design before long-term 5 V use.
+2. Copy `companion/local-env.example.ps1` to ignored `companion/secrets/local-env.ps1` and fill in Spotify client ID/secret.
+3. Start the companion from the repo root with `.\scripts\start-companion.ps1`.
+4. Complete the browser login from `GET /api/spotify/status`.
+5. Play a track and confirm the LCD shows title and artist in green.
+6. Confirm the LCD module's I2C electrical design before long-term 5 V use.

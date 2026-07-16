@@ -65,7 +65,8 @@ bool StatusClient::fetch(DisplayState& state) {
   }
 
   const String effect = String(doc["effect"] | "solid");
-  state.scrollText = effect == "scroll";
+  state.scrollText = effect == "scroll" || effect == "scroll_once";
+  state.scrollOnce = effect == "scroll_once";
   state.line1 = state.scrollText ? trimmedLine(doc["line1"] | "") : fitLine(doc["line1"] | "");
   state.line2 = state.scrollText ? trimmedLine(doc["line2"] | "") : fitLine(doc["line2"] | "");
   state.backlight = colorFromName(String(doc["backlight"] | "white"));

@@ -33,7 +33,7 @@ def get_status_modes() -> dict[str, DisplayStatus]:
 
 @app.get("/api/agent/status")
 def get_agent_status() -> dict[str, str | None]:
-    return {"state": status_engine.agent_status}
+    return {"state": status_engine.get_agent_status_value()}
 
 
 @app.post("/api/agent/status/{state}", response_model=DisplayStatus)

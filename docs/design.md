@@ -88,8 +88,8 @@ weather default
 Manual status modes override debug inputs until `/api/debug/reset` is called.
 Agent status overrides debug inputs until `/api/agent/reset` or `/api/debug/reset` is called.
 Calendar status interrupts agent status, and the stored agent status resumes when no meeting state is active. Calendar status shows only private text. Accepted or owned busy timed events count as meetings; declined, all-day, and free events are ignored. The Calendar states are yellow at 10 minutes, red at 5 minutes, and `MEETING` / `NOW` with solid red after the meeting starts.
-Spotify currently playing sends the full track title and artist with a blue backlight and scroll effect; the firmware scrolls rows longer than 16 characters. Paused or inactive Spotify falls back to the next lower-priority source.
-When no higher-priority state is active, the companion shows compact weather: `CHIP 68F` and `OUT 74F 45%`. Outside weather is fetched by the companion for San Jose, CA; the ESP32 only posts its internal chip temperature and renders `/api/status`.
+Spotify currently playing rotates with compact weather when no higher-priority state is active. Fitting Spotify text shows briefly, then weather shows briefly; long Spotify text uses a one-pass scroll effect before weather. Song changes briefly interrupt manual, Calendar, and active agent statuses using the interrupted status backlight color, then normal priority resumes. Paused or inactive Spotify falls back to the next lower-priority source.
+When no higher-priority state or active Spotify playback is active, the companion shows compact weather: `CHIP 68F` and `OUT 74F 45%`. Outside weather is fetched by the companion for San Jose, CA; the ESP32 only posts its internal chip temperature and renders `/api/status`.
 
 ## Non-Goals For This Milestone
 

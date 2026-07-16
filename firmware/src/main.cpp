@@ -19,6 +19,7 @@ bool flashBacklightOn = true;
 unsigned long lastFlashAt = 0;
 int scrollFrame = 0;
 unsigned long lastScrollAt = 0;
+unsigned long scrollOnceCompletedAt = 0;
 
 bool sameColor(deskdeck::RgbColor left, deskdeck::RgbColor right) {
   return left.red == right.red && left.green == right.green && left.blue == right.blue;
@@ -29,10 +30,25 @@ bool sameDisplayState(const deskdeck::DisplayState& left, const deskdeck::Displa
          left.line2 == right.line2 &&
          sameColor(left.backlight, right.backlight) &&
          left.flashBacklight == right.flashBacklight &&
-         left.scrollText == right.scrollText;
+         left.scrollText == right.scrollText &&
+         left.scrollOnce == right.scrollOnce;
 }
 
-String scrollWindow(const String& line, int frame) {
+int scrollEndFrame(const String& line) {
+  const int lineLength = line.length();
+  if (lineLength <= deskdeck::config::LCD_COLUMNS) {
+    return 0;
+  }
+
+  const int maxOffset = lineLength - deskdeck::config::LCD_COLUMNS;
+  return deskdeck::config::SCROLL_PAUSE_FRAMES + maxOffset;
+}
+
+int scrollEndFrame(const deskdeck::DisplayState& state) {
+  return max(scrollEndFrame(state.line1), scrollEndFrame(state.line2));
+}
+
+String scrollWindow(const String& line, int frame, bool repeat) {
   const int lineLength = line.length();
   if (lineLength <= deskdeck::config::LCD_COLUMNS) {
     return line;
@@ -43,7 +59,7 @@ String scrollWindow(const String& line, int frame) {
       deskdeck::config::SCROLL_PAUSE_FRAMES +
       maxOffset + 1 +
       deskdeck::config::SCROLL_PAUSE_FRAMES;
-  int position = frame % cycleFrames;
+  int position = repeat ? frame % cycleFrames : min(frame, scrollEndFrame(line));
   if (position < deskdeck::config::SCROLL_PAUSE_FRAMES) {
     return line.substring(0, deskdeck::config::LCD_COLUMNS);
   }
@@ -53,12 +69,34 @@ String scrollWindow(const String& line, int frame) {
   return line.substring(offset, offset + deskdeck::config::LCD_COLUMNS);
 }
 
+bool isWeatherStatus(const deskdeck::DisplayState& state) {
+  return state.line1.startsWith("CHIP ") || state.line1 == "CHIP --F";
+}
+
+bool scrollOnceReadyToLeave() {
+  if (!hasCurrentDisplayState ||
+      !currentDisplayState.scrollOnce ||
+      scrollFrame < scrollEndFrame(currentDisplayState) ||
+      scrollOnceCompletedAt == 0) {
+    return true;
+  }
+
+  return millis() - scrollOnceCompletedAt >= deskdeck::config::SCROLL_ONCE_END_HOLD_MS;
+}
+
+bool shouldDeferStatusUpdate(const deskdeck::DisplayState& nextState) {
+  return hasCurrentDisplayState &&
+         currentDisplayState.scrollOnce &&
+         isWeatherStatus(nextState) &&
+         !scrollOnceReadyToLeave();
+}
+
 void renderCurrentDisplayState() {
   String line1 = currentDisplayState.line1;
   String line2 = currentDisplayState.line2;
   if (currentDisplayState.scrollText) {
-    line1 = scrollWindow(currentDisplayState.line1, scrollFrame);
-    line2 = scrollWindow(currentDisplayState.line2, scrollFrame);
+    line1 = scrollWindow(currentDisplayState.line1, scrollFrame, !currentDisplayState.scrollOnce);
+    line2 = scrollWindow(currentDisplayState.line2, scrollFrame, !currentDisplayState.scrollOnce);
   }
 
   deskdeck::showMessage(
@@ -95,6 +133,7 @@ void showStatus(const deskdeck::DisplayState& state) {
   lastFlashAt = millis();
   scrollFrame = 0;
   lastScrollAt = millis();
+  scrollOnceCompletedAt = 0;
   renderCurrentDisplayState();
 }
 
@@ -126,6 +165,13 @@ void updateScrollEffect() {
     return;
   }
 
+  if (currentDisplayState.scrollOnce && scrollFrame >= scrollEndFrame(currentDisplayState)) {
+    if (scrollOnceCompletedAt == 0) {
+      scrollOnceCompletedAt = millis();
+    }
+    return;
+  }
+
   const unsigned long now = millis();
   if (now - lastScrollAt < deskdeck::config::SCROLL_INTERVAL_MS) {
     return;
@@ -134,6 +180,9 @@ void updateScrollEffect() {
   lastScrollAt = now;
   scrollFrame++;
   renderCurrentDisplayState();
+  if (currentDisplayState.scrollOnce && scrollFrame >= scrollEndFrame(currentDisplayState)) {
+    scrollOnceCompletedAt = now;
+  }
 }
 
 void connectWifiWithDisplay() {
@@ -155,6 +204,11 @@ void connectWifiWithDisplay() {
 void pollStatusServer() {
   deskdeck::DisplayState state;
   if (statusClient.fetch(state)) {
+    if (shouldDeferStatusUpdate(state)) {
+      Serial.println("Status update deferred until scroll_once completes.");
+      return;
+    }
+
     Serial.println("Status updated from server.");
     showStatus(state);
     return;

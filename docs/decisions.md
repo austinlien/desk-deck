@@ -1,0 +1,44 @@
+# Decisions
+
+## 2026-07-15: Use PlatformIO With Arduino Framework
+
+Use PlatformIO in VS Code with the Arduino framework for the firmware.
+
+Reasoning:
+
+- Keeps build settings in the repository.
+- Easier for another person to clone and build.
+- Simpler than ESP-IDF for the first display milestone.
+- Allows use of the maintained DFRobot Arduino LCD library.
+
+## 2026-07-15: Use ESP32-C3-DevKitM-1 PlatformIO Target
+
+Use `esp32-c3-devkitm-1` as the PlatformIO board target.
+
+Reasoning:
+
+- PlatformIO has this ESP32-C3 devkit target available.
+- The project can override pins in source code for the ESP32-C3-DevKit-RUST-1 hardware.
+
+## 2026-07-15: Use Rust-1 I2C Pins
+
+Use:
+
+```text
+SDA = GPIO10
+SCL = GPIO8
+```
+
+Reasoning:
+
+- This matches the ESP32-C3-DevKit-RUST-1 board documentation.
+- Pin assignments are centralized in firmware constants.
+
+## 2026-07-15: Use DFRobot Arduino LCD Library First
+
+Use `dfrobot/DFRobot_RGBLCD1602` for display bring-up.
+
+Reasoning:
+
+- Rewriting the driver for ESP-IDF was useful for a class assignment, but is unnecessary for this project milestone.
+- The maintained Arduino library reduces risk and keeps attention on project behavior.

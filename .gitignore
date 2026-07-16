@@ -10,6 +10,7 @@ build/
 dist/
 *.bin
 *.elf
+*.log
 *.map
 
 # Python / future companion app

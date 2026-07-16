@@ -73,9 +73,9 @@ def test_spotify_rotates_to_weather_after_default_hold() -> None:
     )
 
     first = status_engine.select_status(now)
-    weather = status_engine.select_status(now + timedelta(seconds=12))
-    time_status = status_engine.select_status(now + timedelta(seconds=17))
-    next_spotify = status_engine.select_status(now + timedelta(seconds=21))
+    weather = status_engine.select_status(now + timedelta(seconds=4))
+    time_status = status_engine.select_status(now + timedelta(seconds=9))
+    next_spotify = status_engine.select_status(now + timedelta(seconds=13))
 
     assert first == DisplayStatus(line1="Song", line2="Artist", backlight="green")
     assert weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
@@ -116,11 +116,11 @@ def test_spotify_track_change_resets_rotation_to_spotify() -> None:
     status_engine.set_spotify_source(source)
 
     assert status_engine.select_status(now).line1 == "Song A"
-    assert status_engine.select_status(now + timedelta(seconds=12)).line1 == "CHIP 68F"
+    assert status_engine.select_status(now + timedelta(seconds=4)).line1 == "CHIP 68F"
 
     source.status = DisplayStatus(line1="Song B", line2="Artist", backlight="green")
 
-    assert status_engine.select_status(now + timedelta(seconds=17)) == DisplayStatus(
+    assert status_engine.select_status(now + timedelta(seconds=9)) == DisplayStatus(
         line1="Song B",
         line2="Artist",
         backlight="green",
@@ -135,10 +135,10 @@ def test_higher_priority_status_reset_rotation_when_cleared() -> None:
 
     assert status_engine.select_status(now).line1 == "Song"
     status_engine.set_agent_status_value("working")
-    assert status_engine.select_status(now + timedelta(seconds=12)).line1 == "AGENT"
+    assert status_engine.select_status(now + timedelta(seconds=4)).line1 == "AGENT"
     status_engine.set_agent_status_value(None)
 
-    assert status_engine.select_status(now + timedelta(seconds=13)) == DisplayStatus(
+    assert status_engine.select_status(now + timedelta(seconds=5)) == DisplayStatus(
         line1="Song",
         line2="Artist",
         backlight="green",

@@ -54,6 +54,7 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Normalized Spotify title and artist text to LCD-safe ASCII and changed long-text Spotify rotation to wait until the final scroll frame, hold for 2 seconds, then rotate to weather.
 - Added a one-screen completion buffer to long Spotify scroll timing so the companion keeps serving the song long enough for the ESP-rendered LCD scroll to reach the final characters before weather rotation.
 - Added a 4-second time/date screen to the default rotation, so the cycle is Spotify, temps, then time when Spotify is active, or temps then time when Spotify is inactive.
+- Changed fitting Spotify text to hold for 4 seconds instead of the previous long Spotify hold; long Spotify text still uses the computed scroll duration.
 
 ## What Works
 
@@ -113,6 +114,8 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Reduced Spotify final-frame hold from 3 seconds to 2 seconds; companion regression and firmware regression passed, and the live companion was restarted.
 - Default time screen companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 42 tests passed.
 - Default time screen firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted and sampled rotating temps, time/date, and Spotify.
+- Fitting Spotify hold reduction companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 42 tests passed.
+- Fitting Spotify hold reduction firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted.
 
 ## Next Steps
 

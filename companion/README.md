@@ -57,6 +57,17 @@ Manual modes override debug inputs until reset.
 
 Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset.
 
+Preferred repo-local scripts:
+
+```powershell
+.\scripts\agent-working.ps1
+.\scripts\agent-waiting.ps1
+.\scripts\agent-done.ps1
+.\scripts\agent-reset.ps1
+```
+
+Direct API calls:
+
 ```powershell
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/working
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/waiting

@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Agent status light bridge: expose local companion endpoints for agent working, waiting, and done states.
+Agent status script workflow: provide repo-local scripts and AGENTS.md guidance for updating the Desk Deck agent status light.
 
 ## What Changed
 
@@ -23,6 +23,8 @@ Agent status light bridge: expose local companion endpoints for agent working, w
 - Added fake debug inputs and deterministic companion-side priority selection.
 - Added debug endpoints for reading inputs, updating inputs, and resetting state.
 - Added agent status bridge endpoints for `working`, `waiting`, and `done`.
+- Added repo-local PowerShell scripts for setting agent `working`, `waiting`, `done`, and reset states.
+- Added root `AGENTS.md` instructions for using the status scripts during Codex work.
 
 ## What Works
 
@@ -38,6 +40,7 @@ Agent status light bridge: expose local companion endpoints for agent working, w
 - Companion server can switch local test modes without firmware changes.
 - Companion server can select status from fake meeting, notification, and Spotify inputs.
 - Companion server can expose explicit agent status lights without firmware changes.
+- Agent status scripts can be used by Codex or the user without typing direct API calls.
 
 ## Blocked / Unknown
 
@@ -85,10 +88,12 @@ Agent status light bridge: expose local companion endpoints for agent working, w
 - Live agent endpoints returned `AGENT` / `WORKING`, `AGENT` / `WAITING`, and `AGENT` / `DONE`.
 - Invalid agent status requests return HTTP 404.
 - Live agent status was reset to default `DESK DECK` / `ONLINE`.
+- Agent status scripts validated `working`, `waiting`, `done`, and reset against the live companion server.
+- Agent status scripts fail softly with a warning when the companion server is unavailable.
+- Firmware build regression still passes after adding the scripts and `AGENTS.md`.
 
 ## Next Steps
 
-1. Confirm ESP32 LCD visually updates for working, waiting, and done.
-2. Commit and push agent status light bridge.
-3. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-4. Next milestone: decide whether to wire agent status into a script/hook or move to Google Calendar MVP.
+1. Commit and push agent status script workflow.
+2. Confirm the LCD module's I2C electrical design before long-term 5 V use.
+3. Next milestone: Google Calendar MVP or deeper automation for Codex lifecycle signals.

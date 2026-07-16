@@ -92,3 +92,4 @@ Agent status overrides both manual modes and debug inputs until `/api/agent/rese
 ## Future Feature Notes
 
 - Automatic Codex lifecycle detection is deferred until there is a reliable signal source. Current agent status is controlled through explicit local API calls.
+- `AGENTS.md` and `scripts/agent-*.ps1` provide an instruction-driven workflow for Codex to update the local status light during repository work.

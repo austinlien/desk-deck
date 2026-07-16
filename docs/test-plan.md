@@ -103,6 +103,22 @@ Invoke-RestMethod http://127.0.0.1:8000/api/status
 ## Agent Status Light Procedure
 
 ```powershell
+.\scripts\agent-working.ps1
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+.\scripts\agent-waiting.ps1
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+.\scripts\agent-done.ps1
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+.\scripts\agent-reset.ps1
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Equivalent direct API calls:
+
+```powershell
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/working
 Invoke-RestMethod http://127.0.0.1:8000/api/status
 

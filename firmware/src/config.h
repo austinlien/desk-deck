@@ -14,6 +14,10 @@ constexpr unsigned long SERIAL_BAUD = 115200;
 constexpr unsigned long LCD_POWER_SETTLE_MS = 1500;
 constexpr unsigned long LCD_RETRY_DELAY_MS = 250;
 constexpr unsigned long LOOP_IDLE_DELAY_MS = 1000;
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
+constexpr unsigned long WIFI_RETRY_DELAY_MS = 5000;
+constexpr unsigned long STATUS_POLL_INTERVAL_MS = 5000;
+constexpr unsigned long HTTP_TIMEOUT_MS = 3000;
 
 constexpr const char* BRING_UP_LINE_1 = "DESK DECK";
 constexpr const char* BRING_UP_LINE_2 = "HARDWARE OK";

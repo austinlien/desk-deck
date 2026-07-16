@@ -24,4 +24,8 @@ void showMessage(const char* line1, const char* line2, uint8_t red, uint8_t gree
   lcd.setCursor(0, 1);
   lcd.print(line2);
 }
+
+void showMessage(const String& line1, const String& line2, uint8_t red, uint8_t green, uint8_t blue) {
+  showMessage(line1.c_str(), line2.c_str(), red, green, blue);
+}
 }  // namespace deskdeck

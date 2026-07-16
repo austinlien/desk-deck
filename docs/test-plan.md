@@ -17,6 +17,22 @@ DESK DECK
 HARDWARE OK
 ```
 
+## Wi-Fi MVP Acceptance Criteria
+
+- Firmware builds in PlatformIO with local `firmware/src/secrets.h` present.
+- Companion server runs locally on Windows with FastAPI.
+- ESP32 connects to Wi-Fi and logs its IP address.
+- ESP32 polls `GET /api/status`.
+- LCD shows:
+
+```text
+DESK DECK
+ONLINE
+```
+
+- Stopping the companion server causes the LCD to show `SERVER` / `OFFLINE`.
+- Restarting the server recovers on the next poll without reflashing or rebooting.
+
 ## Test Procedure
 
 1. Install the PlatformIO VS Code extension.
@@ -27,6 +43,26 @@ HARDWARE OK
 6. Open Serial Monitor at `115200`.
 7. Record discovered I2C addresses in `status.md`.
 8. Confirm LCD text and backlight.
+
+## Wi-Fi MVP Procedure
+
+1. Copy `firmware/src/secrets.example.h` to `firmware/src/secrets.h`.
+2. Set `WIFI_SSID`, `WIFI_PASSWORD`, and `STATUS_SERVER_URL`.
+3. Start the companion server:
+
+```powershell
+cd companion
+python3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+4. Build and upload firmware.
+5. Open Serial Monitor at `115200`.
+6. Confirm Wi-Fi connected log and LCD server status.
+7. Stop the server and confirm `SERVER` / `OFFLINE`.
+8. Restart the server and confirm recovery.
 
 ## Refactor Regression Checks
 

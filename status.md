@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Firmware foundation: keep the working LCD bring-up behavior while splitting the firmware into small modules.
+Wi-Fi MVP: connect the ESP32 to Wi-Fi, poll a local FastAPI test server, and display server-provided status text.
 
 ## What Changed
 
@@ -14,6 +14,10 @@ Firmware foundation: keep the working LCD bring-up behavior while splitting the 
 - Updated firmware to wait longer after power-up, initialize the LCD before the I2C scan, use a white backlight, and write the bring-up message three times for more reliable LCD startup.
 - Split firmware into `config.h`, `i2c_scan.*`, `lcd_display.*`, and a smaller `main.cpp`.
 - Updated design, decisions, and test-plan docs for the module layout.
+- Added ignored `firmware/src/secrets.h` and committed `firmware/src/secrets.example.h`.
+- Added Wi-Fi manager, HTTP status client, display state, and named backlight color mapping.
+- Added a minimal FastAPI companion test server at `companion/app/main.py`.
+- Updated docs for Wi-Fi MVP setup and testing.
 
 ## What Works
 
@@ -25,12 +29,16 @@ Firmware foundation: keep the working LCD bring-up behavior while splitting the 
 - LCD text was visible once when powered from `5V`.
 - LCD now displays `DESK DECK` and `HARDWARE OK` when powered from `5V`.
 - Refactored firmware builds successfully with PlatformIO.
+- Companion test server source is present and returns fixed `/api/status` JSON.
 
 ## Blocked / Unknown
 
 - PlatformIO is not currently installed on this computer's PATH.
 - LCD did not display text reliably at `3V3`.
 - Using `5V` for LCD VCC may expose ESP32-C3 I2C pins to 5 V unless the LCD module provides level shifting.
+- Wi-Fi credentials and Windows LAN IP must be filled in locally in `firmware/src/secrets.h`.
+- Wi-Fi polling has not yet been tested on hardware.
+- Use `python3.11` for the companion FastAPI venv; the default `python` points to a Python 3.14 build that cannot install `pydantic-core` cleanly on this machine.
 
 ## Validation
 
@@ -45,9 +53,19 @@ Firmware foundation: keep the working LCD bring-up behavior while splitting the 
 - Refactored firmware uploaded successfully after closing PlatformIO/serial tasks.
 - Monitor command was attempted after upload but did not capture startup output before the command timeout.
 - User confirmed the LCD still displays `DESK DECK` and `HARDWARE OK` after the refactor upload.
+- Firmware Wi-Fi MVP build completed successfully with PlatformIO.
+- Companion dependencies installed successfully in a CPython 3.11 venv.
+- Companion status function returned `{'line1': 'DESK DECK', 'line2': 'ONLINE', 'backlight': 'green'}`.
+- Companion FastAPI server responded locally at `http://127.0.0.1:8000/api/status` with `{"line1":"DESK DECK","line2":"ONLINE","backlight":"green"}`.
+- Wi-Fi MVP firmware uploaded successfully to the ESP32 after stopping lingering PlatformIO processes.
+- Serial monitor command was attempted after upload but did not capture output before timeout.
+- User confirmed the LCD reached `DESK DECK` / `ONLINE`.
+- Updated Wi-Fi connected LCD screen to avoid displaying the ESP32 IP address; IP remains in Serial logs.
+- No-IP display tweak uploaded successfully to the ESP32.
+- Companion endpoint was rechecked locally and returned `DESK DECK` / `ONLINE`.
 
 ## Next Steps
 
-1. Commit and push the firmware foundation milestone.
+1. Commit and push the Wi-Fi MVP milestone.
 2. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-3. Next firmware milestone: Wi-Fi MVP with a hardcoded local status response.
+3. Next milestone: configurable local status modes before Calendar/Spotify integrations.

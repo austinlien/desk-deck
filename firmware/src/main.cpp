@@ -2,10 +2,17 @@
 #include <Wire.h>
 
 #include "config.h"
+#include "display_state.h"
 #include "i2c_scan.h"
 #include "lcd_display.h"
+#include "status_client.h"
+#include "wifi_manager.h"
 
 namespace {
+deskdeck::WifiManager wifi;
+deskdeck::StatusClient statusClient;
+unsigned long lastStatusPollAt = 0;
+
 void showBringUpMessage() {
   deskdeck::initializeDisplay();
   deskdeck::showMessage(
@@ -14,6 +21,47 @@ void showBringUpMessage() {
       deskdeck::config::BRING_UP_BACKLIGHT_R,
       deskdeck::config::BRING_UP_BACKLIGHT_G,
       deskdeck::config::BRING_UP_BACKLIGHT_B);
+}
+
+void showStatus(const char* line1, const char* line2, deskdeck::RgbColor color) {
+  deskdeck::showMessage(line1, line2, color.red, color.green, color.blue);
+}
+
+void showStatus(const deskdeck::DisplayState& state) {
+  deskdeck::showMessage(
+      state.line1,
+      state.line2,
+      state.backlight.red,
+      state.backlight.green,
+      state.backlight.blue);
+}
+
+void connectWifiWithDisplay() {
+  showStatus("WIFI", "CONNECTING", deskdeck::colorFromName("yellow"));
+  Serial.print("Connecting to Wi-Fi");
+
+  if (wifi.connect()) {
+    Serial.print("Wi-Fi connected. IP: ");
+    Serial.println(wifi.localIp());
+    showStatus("WIFI", "CONNECTED", deskdeck::colorFromName("green"));
+    delay(1500);
+    return;
+  }
+
+  Serial.println("Wi-Fi connection failed.");
+  showStatus("WIFI FAILED", "RETRYING", deskdeck::colorFromName("red"));
+}
+
+void pollStatusServer() {
+  deskdeck::DisplayState state;
+  if (statusClient.fetch(state)) {
+    Serial.println("Status updated from server.");
+    showStatus(state);
+    return;
+  }
+
+  Serial.println("Status server unavailable.");
+  showStatus("SERVER", "OFFLINE", deskdeck::colorFromName("yellow"));
 }
 }  // namespace
 
@@ -41,8 +89,22 @@ void setup() {
   deskdeck::scanI2cBus();
 
   Serial.println("LCD message written.");
+  connectWifiWithDisplay();
+  lastStatusPollAt = millis() - deskdeck::config::STATUS_POLL_INTERVAL_MS;
 }
 
 void loop() {
+  if (!wifi.isConnected()) {
+    connectWifiWithDisplay();
+    delay(deskdeck::config::WIFI_RETRY_DELAY_MS);
+    return;
+  }
+
+  const unsigned long now = millis();
+  if (now - lastStatusPollAt >= deskdeck::config::STATUS_POLL_INTERVAL_MS) {
+    lastStatusPollAt = now;
+    pollStatusServer();
+  }
+
   delay(deskdeck::config::LOOP_IDLE_DELAY_MS);
 }

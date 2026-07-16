@@ -52,3 +52,23 @@ Reasoning:
 - Keeps `main.cpp` focused on the boot sequence.
 - Centralizes pins, addresses, and timing constants before more features depend on them.
 - Makes the next Wi-Fi milestone easier to add without mixing network, display, and hardware scan logic.
+
+## 2026-07-15: Use Ignored Firmware Secrets Header
+
+Use `firmware/src/secrets.h` for local Wi-Fi credentials and server URL, with `firmware/src/secrets.example.h` committed as the template.
+
+Reasoning:
+
+- Keeps private Wi-Fi credentials out of GitHub.
+- Keeps first embedded-network setup simple in PlatformIO.
+- Avoids adding a runtime provisioning workflow before the network path is proven.
+
+## 2026-07-15: Add FastAPI Test Server Before Real Integrations
+
+Add a minimal local FastAPI server that returns fixed display JSON.
+
+Reasoning:
+
+- Proves the intended ESP32-to-PC architecture before Calendar or Spotify complexity.
+- Gives the firmware a stable local API to poll.
+- Keeps the ESP32 display logic simple: it renders the server's chosen state.

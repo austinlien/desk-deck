@@ -16,12 +16,13 @@ dist/
 __pycache__/
 *.py[cod]
 .venv/
+.venv*/
 venv/
 .env
 .env.*
 
 # Secrets and local config
-secrets.*
+firmware/src/secrets.h
 config.local.*
 *.local
 

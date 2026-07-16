@@ -13,11 +13,15 @@ constexpr uint8_t LCD_RGB_ADDRESS = 0x2D;
 constexpr unsigned long SERIAL_BAUD = 115200;
 constexpr unsigned long LCD_POWER_SETTLE_MS = 1500;
 constexpr unsigned long LCD_RETRY_DELAY_MS = 250;
-constexpr unsigned long LOOP_IDLE_DELAY_MS = 1000;
+constexpr unsigned long LOOP_IDLE_DELAY_MS = 100;
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
 constexpr unsigned long WIFI_RETRY_DELAY_MS = 5000;
-constexpr unsigned long STATUS_POLL_INTERVAL_MS = 5000;
+constexpr unsigned long STATUS_POLL_INTERVAL_MS = 1000;
+constexpr unsigned long SENSOR_POST_INTERVAL_MS = 60000;
 constexpr unsigned long HTTP_TIMEOUT_MS = 3000;
+constexpr unsigned long FLASH_INTERVAL_MS = 500;
+constexpr unsigned long SCROLL_INTERVAL_MS = 500;
+constexpr int SCROLL_PAUSE_FRAMES = 2;
 
 constexpr const char* BRING_UP_LINE_1 = "DESK DECK";
 constexpr const char* BRING_UP_LINE_2 = "HARDWARE OK";

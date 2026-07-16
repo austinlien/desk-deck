@@ -2,7 +2,7 @@
 
 ## Current Architecture
 
-The current project stage is a Wi-Fi MVP with a local test server.
+The current project stage is a Wi-Fi MVP with a local companion server and Google Calendar MVP.
 
 ```text
 ESP32-C3 firmware
@@ -16,12 +16,15 @@ ESP32-C3 firmware
 Windows companion test server
   -> FastAPI
   -> GET /api/status
+  -> optional Google Calendar read-only OAuth source
+  -> optional Spotify currently-playing OAuth source
+  -> default weather screen with ESP32 chip temperature and wttr.in outside weather
   -> agent status override
   -> configurable in-memory status modes
   -> deterministic priority over fake debug inputs
 ```
 
-There is no Calendar integration, Spotify integration, OAuth, persistent config, or local LLM integration in this milestone.
+There is no persistent config UI or local LLM integration in this milestone.
 
 ## Firmware Responsibilities
 
@@ -32,6 +35,7 @@ There is no Calendar integration, Spotify integration, OAuth, persistent config,
 - Display `DESK DECK` and `HARDWARE OK`.
 - Connect to Wi-Fi using local ignored credentials.
 - Poll the companion test server for display text.
+- Post its internal chip temperature reading to the companion.
 - Show clear Wi-Fi/server failure screens.
 - Log bring-up information over Serial.
 
@@ -60,31 +64,35 @@ Later milestones should keep the ESP32 firmware simple:
 The Windows companion app should eventually own:
 
 - Google Calendar OAuth and polling
+- Privacy-preserving calendar status text
+- Default weather screen
 - Spotify OAuth and polling
 - Status prioritization
-- Text shortening
+- Display effects and text animation
 - Optional local LLM integration
 - REST API for the ESP32
 
 ## Current Companion Priority
 
-The companion server currently uses fake debug inputs to exercise the future priority engine:
+The companion server selects status in this order:
 
 ```text
-meeting_soon
-active_meeting
-notification
-spotify_playing
-spotify_paused
-online
+manual mode override
+Google Calendar status
+agent override
+Spotify currently playing
+fake debug inputs
+weather default
 ```
 
 Manual status modes override debug inputs until `/api/debug/reset` is called.
-Agent status overrides both manual modes and debug inputs until `/api/agent/reset` or `/api/debug/reset` is called.
+Agent status overrides debug inputs until `/api/agent/reset` or `/api/debug/reset` is called.
+Calendar status interrupts agent status, and the stored agent status resumes when no meeting state is active. Calendar status shows only private text. Accepted or owned busy timed events count as meetings; declined, all-day, and free events are ignored. The Calendar states are yellow at 10 minutes, red at 5 minutes, and `MEETING` / `NOW` with solid red after the meeting starts.
+Spotify currently playing sends the full track title and artist with a blue backlight and scroll effect; the firmware scrolls rows longer than 16 characters. Paused or inactive Spotify falls back to the next lower-priority source.
+When no higher-priority state is active, the companion shows compact weather: `CHIP 68F` and `OUT 74F 45%`. Outside weather is fetched by the companion for San Jose, CA; the ESP32 only posts its internal chip temperature and renders `/api/status`.
 
 ## Non-Goals For This Milestone
 
-- Calendar or Spotify integration
 - Persistent configuration
 - Buttons, sensors, or input controls
 - Enclosure work

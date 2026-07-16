@@ -1,6 +1,6 @@
 # Desk Deck Companion Test Server
 
-This is the first local test server for Desk Deck. It returns display JSON so the ESP32 can prove Wi-Fi and HTTP polling before Calendar or Spotify are added.
+This is the local companion server for Desk Deck. It returns display JSON for the ESP32 and can optionally read Google Calendar to show private meeting status.
 
 ## Setup
 
@@ -10,6 +10,110 @@ python3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
+
+## Google Calendar MVP
+
+Calendar support uses local Google OAuth and the primary calendar by default. It is disabled automatically when no credentials or token file exists.
+
+1. Create a Google OAuth desktop client with the Calendar API enabled.
+2. Download the OAuth client JSON to:
+
+```text
+companion/secrets/credentials.json
+```
+
+3. Start the companion server from the `companion/` directory. On the first Calendar request, a browser login opens and creates:
+
+```text
+companion/secrets/token.json
+```
+
+Both files are ignored by Git. Optional environment variables:
+
+```powershell
+$env:DESK_DECK_CALENDAR_ENABLED = "1"
+$env:DESK_DECK_GOOGLE_CALENDAR_ID = "primary"
+$env:DESK_DECK_GOOGLE_CREDENTIALS = "secrets/credentials.json"
+$env:DESK_DECK_GOOGLE_TOKEN = "secrets/token.json"
+```
+
+Calendar event rules:
+
+- Manual modes override Calendar.
+- Calendar overrides agent status, then the stored agent status resumes when no meeting state is active.
+- Declined, all-day, and free events are ignored.
+- Accepted or owned busy timed events count as meetings.
+- 10 to 5 minutes before start: `MEETING` / `SOON` / yellow.
+- 5 minutes before start: `MEETING` / `SOON` / red.
+- Started meetings: `MEETING` / `NOW` / red.
+
+## Default Weather Screen
+
+When no manual mode, Calendar state, active agent state, or debug input is active, the companion returns a default weather screen:
+
+```text
+CHIP 68F
+OUT 74F 45%
+```
+
+The ESP32 posts its internal chip temperature reading to `POST /api/sensors/inside`; the companion applies an optional Fahrenheit offset and fetches outside weather for San Jose, CA from wttr.in.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/weather/status
+
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/sensors/inside `
+  -Body '{"temperature_f":68}'
+```
+
+Optional environment variables:
+
+```powershell
+$env:DESK_DECK_WEATHER_LOCATION = "San Jose, CA"
+$env:DESK_DECK_INSIDE_TEMP_OFFSET_F = "0"
+$env:DESK_DECK_AGENT_DONE_HOLD_SECONDS = "5"
+```
+
+`AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset or changed.
+
+## Spotify MVP
+
+Spotify support uses the Spotify Web API to show the currently playing track. It is disabled automatically when no Spotify client ID or token is configured.
+
+1. Create a Spotify app at <https://developer.spotify.com/dashboard>.
+2. Add this redirect URI to the Spotify app:
+
+```text
+http://127.0.0.1:8888/callback
+```
+
+3. Set these environment variables before starting the companion server:
+
+```powershell
+$env:DESK_DECK_SPOTIFY_CLIENT_ID = "your_spotify_client_id"
+$env:DESK_DECK_SPOTIFY_CLIENT_SECRET = "your_spotify_client_secret"
+$env:DESK_DECK_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
+$env:DESK_DECK_SPOTIFY_TOKEN = "secrets/spotify/token.json"
+```
+
+4. Start the companion server and call:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/spotify/status
+```
+
+On first use, a browser login opens and creates the ignored token file under `companion/secrets/spotify/`.
+
+Spotify display rules:
+
+- Manual modes, Calendar, and active agent states override Spotify.
+- Playing Spotify overrides debug inputs and weather.
+- Paused or inactive Spotify falls back to weather.
+- Row 1 shows the full track title and scrolls on the firmware when needed.
+- Row 2 shows the full first artist and scrolls on the firmware when needed.
+- Backlight is blue.
 
 ## Run
 
@@ -35,6 +139,8 @@ The active mode is stored in memory and resets to `online` when the server resta
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/status
+Invoke-RestMethod http://127.0.0.1:8000/api/calendar/status
+Invoke-RestMethod http://127.0.0.1:8000/api/spotify/status
 Invoke-RestMethod http://127.0.0.1:8000/api/status/modes
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/status/mode/meeting
 ```
@@ -88,7 +194,7 @@ Automatic Codex lifecycle detection is not implemented yet. For now, scripts, ho
 
 ## Debug Inputs
 
-The debug input endpoints simulate future Calendar, notification, and Spotify integrations without firmware changes. The priority order is:
+The debug input endpoints simulate notification and Spotify integrations without firmware changes. The fallback debug priority order is:
 
 ```text
 meeting_soon

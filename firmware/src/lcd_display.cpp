@@ -16,8 +16,12 @@ void initializeDisplay() {
   delay(100);
 }
 
-void showMessage(const char* line1, const char* line2, uint8_t red, uint8_t green, uint8_t blue) {
+void setBacklight(uint8_t red, uint8_t green, uint8_t blue) {
   lcd.setRGB(red, green, blue);
+}
+
+void showMessage(const char* line1, const char* line2, uint8_t red, uint8_t green, uint8_t blue) {
+  setBacklight(red, green, blue);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(line1);

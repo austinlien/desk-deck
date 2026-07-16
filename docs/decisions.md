@@ -72,3 +72,64 @@ Reasoning:
 - Proves the intended ESP32-to-PC architecture before Calendar or Spotify complexity.
 - Gives the firmware a stable local API to poll.
 - Keeps the ESP32 display logic simple: it renders the server's chosen state.
+
+## 2026-07-16: Use Local OAuth For Google Calendar MVP
+
+Use Google Calendar read-only OAuth in the Windows companion app, with ignored local OAuth files under `companion/secrets/`.
+
+Reasoning:
+
+- Keeps Calendar access local to the user's machine.
+- Avoids committing secrets or adding hosted auth infrastructure.
+- Preserves the existing ESP32 polling contract.
+
+## 2026-07-16: Keep Calendar Display Private
+
+Show `MEETING` / `SOON` for Calendar-derived statuses instead of event titles.
+
+Reasoning:
+
+- The LCD is visible on a desk.
+- The first real integration only needs availability signal, not event detail.
+- The companion can still make richer decisions later without firmware changes.
+
+## 2026-07-16: Add Optional Firmware Display Effects
+
+Extend `/api/status` responses with an optional `effect` field, starting with `solid` and `flash`.
+
+Reasoning:
+
+- The ESP32 polls the companion every 5 seconds, which is too slow for a visible flash.
+- Firmware-side flashing keeps the display effect smooth while preserving the existing text/color API.
+- Older companion responses remain valid because missing `effect` defaults to solid.
+
+## 2026-07-16: Keep Weather Composition In The Companion
+
+Use the ESP32 to post its internal chip temperature reading, while the companion fetches outside weather from wttr.in and composes the default LCD text.
+
+Reasoning:
+
+- Keeps display priority and text formatting in one place.
+- Avoids adding internet weather parsing to firmware.
+- Matches the existing architecture where the ESP32 renders `/api/status`.
+
+## 2026-07-16: Use Compact ASCII Weather Text
+
+Use `CHIP 68F` and `OUT 74F 45%` for the default weather screen.
+
+Reasoning:
+
+- Fits reliably on the 16x2 LCD.
+- Avoids LCD character-set issues with degree symbols.
+- Labels the ESP32 reading as chip temperature instead of room temperature.
+- Shows outside humidity only because current hardware has no indoor humidity sensor.
+
+## 2026-07-16: Keep Spotify In The Companion
+
+Use the Spotify Web API from the Windows companion and continue serving selected text through `/api/status`.
+
+Reasoning:
+
+- Avoids adding OAuth and internet API parsing to firmware.
+- Reuses the existing status priority engine.
+- Lets paused or unavailable Spotify fail open to weather/default behavior.

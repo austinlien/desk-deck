@@ -6,5 +6,6 @@ namespace deskdeck {
 class StatusClient {
  public:
   bool fetch(DisplayState& state);
+  bool postInsideTemperature(float temperatureF);
 };
 }  // namespace deskdeck

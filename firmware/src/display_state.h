@@ -13,6 +13,8 @@ struct DisplayState {
   String line1;
   String line2;
   RgbColor backlight;
+  bool flashBacklight;
+  bool scrollText;
 };
 
 RgbColor colorFromName(const String& colorName);

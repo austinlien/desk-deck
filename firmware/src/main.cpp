@@ -12,6 +12,62 @@ namespace {
 deskdeck::WifiManager wifi;
 deskdeck::StatusClient statusClient;
 unsigned long lastStatusPollAt = 0;
+unsigned long lastSensorPostAt = 0;
+deskdeck::DisplayState currentDisplayState;
+bool hasCurrentDisplayState = false;
+bool flashBacklightOn = true;
+unsigned long lastFlashAt = 0;
+int scrollFrame = 0;
+unsigned long lastScrollAt = 0;
+
+bool sameColor(deskdeck::RgbColor left, deskdeck::RgbColor right) {
+  return left.red == right.red && left.green == right.green && left.blue == right.blue;
+}
+
+bool sameDisplayState(const deskdeck::DisplayState& left, const deskdeck::DisplayState& right) {
+  return left.line1 == right.line1 &&
+         left.line2 == right.line2 &&
+         sameColor(left.backlight, right.backlight) &&
+         left.flashBacklight == right.flashBacklight &&
+         left.scrollText == right.scrollText;
+}
+
+String scrollWindow(const String& line, int frame) {
+  const int lineLength = line.length();
+  if (lineLength <= deskdeck::config::LCD_COLUMNS) {
+    return line;
+  }
+
+  const int maxOffset = lineLength - deskdeck::config::LCD_COLUMNS;
+  const int cycleFrames =
+      deskdeck::config::SCROLL_PAUSE_FRAMES +
+      maxOffset + 1 +
+      deskdeck::config::SCROLL_PAUSE_FRAMES;
+  int position = frame % cycleFrames;
+  if (position < deskdeck::config::SCROLL_PAUSE_FRAMES) {
+    return line.substring(0, deskdeck::config::LCD_COLUMNS);
+  }
+
+  position -= deskdeck::config::SCROLL_PAUSE_FRAMES;
+  const int offset = position <= maxOffset ? position : maxOffset;
+  return line.substring(offset, offset + deskdeck::config::LCD_COLUMNS);
+}
+
+void renderCurrentDisplayState() {
+  String line1 = currentDisplayState.line1;
+  String line2 = currentDisplayState.line2;
+  if (currentDisplayState.scrollText) {
+    line1 = scrollWindow(currentDisplayState.line1, scrollFrame);
+    line2 = scrollWindow(currentDisplayState.line2, scrollFrame);
+  }
+
+  deskdeck::showMessage(
+      line1,
+      line2,
+      currentDisplayState.backlight.red,
+      currentDisplayState.backlight.green,
+      currentDisplayState.backlight.blue);
+}
 
 void showBringUpMessage() {
   deskdeck::initializeDisplay();
@@ -25,15 +81,59 @@ void showBringUpMessage() {
 
 void showStatus(const char* line1, const char* line2, deskdeck::RgbColor color) {
   deskdeck::showMessage(line1, line2, color.red, color.green, color.blue);
+  hasCurrentDisplayState = false;
 }
 
 void showStatus(const deskdeck::DisplayState& state) {
-  deskdeck::showMessage(
-      state.line1,
-      state.line2,
-      state.backlight.red,
-      state.backlight.green,
-      state.backlight.blue);
+  if (hasCurrentDisplayState && sameDisplayState(currentDisplayState, state)) {
+    return;
+  }
+
+  currentDisplayState = state;
+  hasCurrentDisplayState = true;
+  flashBacklightOn = true;
+  lastFlashAt = millis();
+  scrollFrame = 0;
+  lastScrollAt = millis();
+  renderCurrentDisplayState();
+}
+
+void updateFlashEffect() {
+  if (!hasCurrentDisplayState || !currentDisplayState.flashBacklight) {
+    return;
+  }
+
+  const unsigned long now = millis();
+  if (now - lastFlashAt < deskdeck::config::FLASH_INTERVAL_MS) {
+    return;
+  }
+
+  lastFlashAt = now;
+  flashBacklightOn = !flashBacklightOn;
+  if (flashBacklightOn) {
+    deskdeck::setBacklight(
+        currentDisplayState.backlight.red,
+        currentDisplayState.backlight.green,
+        currentDisplayState.backlight.blue);
+    return;
+  }
+
+  deskdeck::setBacklight(0, 0, 0);
+}
+
+void updateScrollEffect() {
+  if (!hasCurrentDisplayState || !currentDisplayState.scrollText) {
+    return;
+  }
+
+  const unsigned long now = millis();
+  if (now - lastScrollAt < deskdeck::config::SCROLL_INTERVAL_MS) {
+    return;
+  }
+
+  lastScrollAt = now;
+  scrollFrame++;
+  renderCurrentDisplayState();
 }
 
 void connectWifiWithDisplay() {
@@ -63,6 +163,23 @@ void pollStatusServer() {
   Serial.println("Status server unavailable.");
   showStatus("SERVER", "OFFLINE", deskdeck::colorFromName("yellow"));
 }
+
+float readInsideTemperatureF() {
+  const float temperatureC = temperatureRead();
+  return (temperatureC * 9.0F / 5.0F) + 32.0F;
+}
+
+void postInsideTemperature() {
+  const float temperatureF = readInsideTemperatureF();
+  if (statusClient.postInsideTemperature(temperatureF)) {
+    Serial.print("Inside temperature posted: ");
+    Serial.print(temperatureF);
+    Serial.println(" F");
+    return;
+  }
+
+  Serial.println("Inside temperature post failed.");
+}
 }  // namespace
 
 void setup() {
@@ -91,6 +208,7 @@ void setup() {
   Serial.println("LCD message written.");
   connectWifiWithDisplay();
   lastStatusPollAt = millis() - deskdeck::config::STATUS_POLL_INTERVAL_MS;
+  lastSensorPostAt = millis() - deskdeck::config::SENSOR_POST_INTERVAL_MS;
 }
 
 void loop() {
@@ -106,5 +224,12 @@ void loop() {
     pollStatusServer();
   }
 
+  if (now - lastSensorPostAt >= deskdeck::config::SENSOR_POST_INTERVAL_MS) {
+    lastSensorPostAt = now;
+    postInsideTemperature();
+  }
+
+  updateFlashEffect();
+  updateScrollEffect();
   delay(deskdeck::config::LOOP_IDLE_DELAY_MS);
 }

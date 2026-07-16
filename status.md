@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Display bring-up: show static text on the DFRobot 16x2 RGB LCD from the ESP32-C3.
+Firmware foundation: keep the working LCD bring-up behavior while splitting the firmware into small modules.
 
 ## What Changed
 
@@ -12,6 +12,8 @@ Display bring-up: show static text on the DFRobot 16x2 RGB LCD from the ESP32-C3
 - Added project documentation for design, hardware, decisions, and testing.
 - Updated firmware to call `Wire.setPins(GPIO10, GPIO8)` before `Wire.begin()` so the DFRobot LCD library keeps the Rust-1 I2C pins when it initializes.
 - Updated firmware to wait longer after power-up, initialize the LCD before the I2C scan, use a white backlight, and write the bring-up message three times for more reliable LCD startup.
+- Split firmware into `config.h`, `i2c_scan.*`, `lcd_display.*`, and a smaller `main.cpp`.
+- Updated design, decisions, and test-plan docs for the module layout.
 
 ## What Works
 
@@ -22,6 +24,7 @@ Display bring-up: show static text on the DFRobot 16x2 RGB LCD from the ESP32-C3
 - Firmware logs `LCD message written.` after initializing the display.
 - LCD text was visible once when powered from `5V`.
 - LCD now displays `DESK DECK` and `HARDWARE OK` when powered from `5V`.
+- Refactored firmware builds successfully with PlatformIO.
 
 ## Blocked / Unknown
 
@@ -37,9 +40,14 @@ Display bring-up: show static text on the DFRobot 16x2 RGB LCD from the ESP32-C3
 - Serial Monitor showed LCD text address `0x3E` and RGB address `0x2D`, matching the firmware assumptions.
 - Latest attached PlatformIO output confirms a clean build, successful upload to `COM5`, successful reset, and I2C detection of the LCD.
 - Local validation with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run` completed successfully.
+- Refactor validation with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run` completed successfully.
+- Refactor upload attempt found `COM5` but failed because the port was busy or locked by another task.
+- Refactored firmware uploaded successfully after closing PlatformIO/serial tasks.
+- Monitor command was attempted after upload but did not capture startup output before the command timeout.
+- User confirmed the LCD still displays `DESK DECK` and `HARDWARE OK` after the refactor upload.
 
 ## Next Steps
 
-1. Push the display bring-up milestone to GitHub.
+1. Commit and push the firmware foundation milestone.
 2. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-3. Next firmware milestone: split LCD/I2C behavior into small modules before adding Wi-Fi.
+3. Next firmware milestone: Wi-Fi MVP with a hardcoded local status response.

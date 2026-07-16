@@ -5,6 +5,7 @@
 The milestone is complete when:
 
 - Firmware builds in PlatformIO from a fresh clone.
+- Firmware still builds after the module split.
 - Firmware uploads to the ESP32-C3 over USB.
 - Serial Monitor at `115200` baud shows startup logs.
 - I2C scan reports `0x2D`, `0x3E`, `0x68`, and `0x70`.
@@ -26,6 +27,14 @@ HARDWARE OK
 6. Open Serial Monitor at `115200`.
 7. Record discovered I2C addresses in `status.md`.
 8. Confirm LCD text and backlight.
+
+## Refactor Regression Checks
+
+- `main.cpp` should contain high-level setup flow only.
+- Pin, address, text, and timing values should live in `config.h`.
+- I2C scanning should live in `i2c_scan.*`.
+- LCD-specific initialization and display writes should live in `lcd_display.*`.
+- Runtime behavior should match the original working display bring-up.
 
 ## Troubleshooting
 

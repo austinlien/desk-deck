@@ -42,3 +42,13 @@ Reasoning:
 
 - Rewriting the driver for ESP-IDF was useful for a class assignment, but is unnecessary for this project milestone.
 - The maintained Arduino library reduces risk and keeps attention on project behavior.
+
+## 2026-07-15: Modularize Firmware Before Wi-Fi
+
+Split the working display bring-up sketch into small firmware modules before adding networking.
+
+Reasoning:
+
+- Keeps `main.cpp` focused on the boot sequence.
+- Centralizes pins, addresses, and timing constants before more features depend on them.
+- Makes the next Wi-Fi milestone easier to add without mixing network, display, and hardware scan logic.

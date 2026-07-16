@@ -2,13 +2,14 @@
 
 ## Current Architecture
 
-The current project stage is a display-only firmware bring-up.
+The current project stage is a modular display-only firmware foundation.
 
 ```text
 ESP32-C3 firmware
+  -> config constants
+  -> LCD initialization and message display
   -> I2C scan over Serial
-  -> DFRobot RGB LCD initialization
-  -> static two-line LCD message
+  -> high-level boot flow
 ```
 
 There is no network code, companion app, calendar integration, Spotify integration, or local LLM integration in this milestone.
@@ -21,6 +22,15 @@ There is no network code, companion app, calendar integration, Spotify integrati
 - Set the RGB backlight.
 - Display `DESK DECK` and `HARDWARE OK`.
 - Log bring-up information over Serial.
+
+## Firmware Modules
+
+```text
+config.h          Pins, LCD constants, startup timing, and bring-up text
+i2c_scan.*        Reusable I2C bus scan and Serial logging
+lcd_display.*     LCD initialization and two-line message display
+main.cpp          Boot sequence and high-level orchestration
+```
 
 ## Future Architecture Direction
 

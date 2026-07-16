@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Wi-Fi MVP: connect the ESP32 to Wi-Fi, poll a local FastAPI test server, and display server-provided status text.
+Configurable local status modes: switch companion-server display states without changing firmware.
 
 ## What Changed
 
@@ -18,6 +18,8 @@ Wi-Fi MVP: connect the ESP32 to Wi-Fi, poll a local FastAPI test server, and dis
 - Added Wi-Fi manager, HTTP status client, display state, and named backlight color mapping.
 - Added a minimal FastAPI companion test server at `companion/app/main.py`.
 - Updated docs for Wi-Fi MVP setup and testing.
+- Added in-memory companion status modes and mode-switching endpoints.
+- Documented the future AI-agent red/yellow/green status-light idea.
 
 ## What Works
 
@@ -29,15 +31,14 @@ Wi-Fi MVP: connect the ESP32 to Wi-Fi, poll a local FastAPI test server, and dis
 - LCD text was visible once when powered from `5V`.
 - LCD now displays `DESK DECK` and `HARDWARE OK` when powered from `5V`.
 - Refactored firmware builds successfully with PlatformIO.
-- Companion test server source is present and returns fixed `/api/status` JSON.
+- Companion test server source is present and returns `/api/status` JSON.
+- Companion server can switch local test modes without firmware changes.
 
 ## Blocked / Unknown
 
 - PlatformIO is not currently installed on this computer's PATH.
 - LCD did not display text reliably at `3V3`.
 - Using `5V` for LCD VCC may expose ESP32-C3 I2C pins to 5 V unless the LCD module provides level shifting.
-- Wi-Fi credentials and Windows LAN IP must be filled in locally in `firmware/src/secrets.h`.
-- Wi-Fi polling has not yet been tested on hardware.
 - Use `python3.11` for the companion FastAPI venv; the default `python` points to a Python 3.14 build that cannot install `pydantic-core` cleanly on this machine.
 
 ## Validation
@@ -63,9 +64,15 @@ Wi-Fi MVP: connect the ESP32 to Wi-Fi, poll a local FastAPI test server, and dis
 - Updated Wi-Fi connected LCD screen to avoid displaying the ESP32 IP address; IP remains in Serial logs.
 - No-IP display tweak uploaded successfully to the ESP32.
 - Companion endpoint was rechecked locally and returned `DESK DECK` / `ONLINE`.
+- Companion status mode validation passed with FastAPI `TestClient`.
+- Live companion server was restarted with the mode endpoints.
+- `GET /api/status/modes` lists all configured modes.
+- Invalid mode requests return HTTP 404.
+- Live server switched to `meeting` and back to `online`.
+- Firmware build still passes; no firmware changes were required for this milestone.
 
 ## Next Steps
 
-1. Commit and push the Wi-Fi MVP milestone.
-2. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-3. Next milestone: configurable local status modes before Calendar/Spotify integrations.
+1. Confirm ESP32 LCD visually updates when modes are switched.
+2. Commit and push configurable status modes.
+3. Confirm the LCD module's I2C electrical design before long-term 5 V use.

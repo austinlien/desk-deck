@@ -33,6 +33,14 @@ ONLINE
 - Stopping the companion server causes the LCD to show `SERVER` / `OFFLINE`.
 - Restarting the server recovers on the next poll without reflashing or rebooting.
 
+## Configurable Status Modes Acceptance Criteria
+
+- `GET /api/status` defaults to `DESK DECK` / `ONLINE` / `green`.
+- `GET /api/status/modes` lists `online`, `idle`, `meeting_soon`, `meeting`, `music`, and `notify`.
+- `POST /api/status/mode/meeting` changes the active status to `IN A MEETING` / `BUSY` / `red`.
+- Invalid mode names return HTTP 404.
+- ESP32 LCD updates on the next poll without firmware changes.
+
 ## Test Procedure
 
 1. Install the PlatformIO VS Code extension.
@@ -63,6 +71,19 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 6. Confirm Wi-Fi connected log and LCD server status.
 7. Stop the server and confirm `SERVER` / `OFFLINE`.
 8. Restart the server and confirm recovery.
+
+## Configurable Status Modes Procedure
+
+With the companion server running:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+Invoke-RestMethod http://127.0.0.1:8000/api/status/modes
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/status/mode/meeting
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Confirm the ESP32 LCD shows the selected mode on the next poll.
 
 ## Refactor Regression Checks
 

@@ -16,7 +16,7 @@ ESP32-C3 firmware
 Windows companion test server
   -> FastAPI
   -> GET /api/status
-  -> fixed display JSON
+  -> configurable in-memory status modes
 ```
 
 There is no Calendar integration, Spotify integration, OAuth, persistent config, or local LLM integration in this milestone.
@@ -70,3 +70,7 @@ The Windows companion app should eventually own:
 - Persistent configuration
 - Buttons, sensors, or input controls
 - Enclosure work
+
+## Future Feature Notes
+
+- AI-agent status light mode: map `working` to yellow, `done` to green, and `blocked` or `error` to red.

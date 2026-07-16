@@ -33,6 +33,7 @@ SPOTIFY_INTERRUPT_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_INTERRUPT_SECONDS",
 LCD_COLUMNS = 16
 SCROLL_INTERVAL_SECONDS = 0.4
 SCROLL_PAUSE_FRAMES = 2
+SCROLL_COMPLETION_BUFFER_FRAMES = LCD_COLUMNS
 
 AGENT_STATUSES: dict[str, DisplayStatus] = {
     "working": DisplayStatus(
@@ -415,7 +416,8 @@ def spotify_phase_duration(status: DisplayStatus) -> timedelta:
     if overflow <= 0:
         return timedelta(seconds=SPOTIFY_HOLD_SECONDS)
 
-    scroll_seconds = (SCROLL_PAUSE_FRAMES + overflow) * SCROLL_INTERVAL_SECONDS
+    scroll_frames = SCROLL_PAUSE_FRAMES + overflow + SCROLL_COMPLETION_BUFFER_FRAMES
+    scroll_seconds = scroll_frames * SCROLL_INTERVAL_SECONDS
     return timedelta(
         seconds=scroll_seconds + SPOTIFY_SCROLL_END_HOLD_SECONDS + SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS
     )

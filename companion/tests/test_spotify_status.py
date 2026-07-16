@@ -95,8 +95,8 @@ def test_long_spotify_text_uses_one_scroll_pass_before_weather() -> None:
     )
 
     spotify = status_engine.select_status(now)
-    still_spotify = status_engine.select_status(now + timedelta(seconds=7.3))
-    weather = status_engine.select_status(now + timedelta(seconds=7.4))
+    still_spotify = status_engine.select_status(now + timedelta(seconds=13.7))
+    weather = status_engine.select_status(now + timedelta(seconds=13.8))
 
     assert spotify == DisplayStatus(
         line1="12345678901234567890",

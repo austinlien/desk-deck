@@ -90,7 +90,7 @@ ONLINE
 - Firmware scrolls Spotify rows longer than 16 characters every 400 ms with brief start/end pauses.
 - Playing Spotify rotates with the compact weather screen when no higher-priority state is active.
 - Fitting Spotify text holds for the configured Spotify duration, then weather holds for the configured weather duration.
-- Long Spotify text uses `scroll_once`, reaches the final frame, holds for 2-3 seconds plus a display sync buffer, then rotates to weather.
+- Long Spotify text uses `scroll_once`, reaches the final frame, includes a completion buffer, holds for 2-3 seconds plus a display sync buffer, then rotates to weather.
 - Spotify song changes briefly interrupt manual, Calendar, and active agent statuses.
 - Starting active agent `working` and `waiting` statuses resets the Spotify baseline so stale Spotify state does not immediately interrupt the agent screen.
 - Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.

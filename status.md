@@ -52,6 +52,7 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Tested temporary LCD green comparison modes and selected RGB `0, 210, 12` as the canonical firmware green.
 - Added a companion-side active agent status TTL so stale `working` and `waiting` states expire automatically.
 - Normalized Spotify title and artist text to LCD-safe ASCII and changed long-text Spotify rotation to wait until the final scroll frame, hold for 3 seconds, then rotate to weather.
+- Added a one-screen completion buffer to long Spotify scroll timing so the companion keeps serving the song long enough for the ESP-rendered LCD scroll to reach the final characters before weather rotation.
 
 ## What Works
 
@@ -105,6 +106,8 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Live API smoke tests confirmed `/api/status`, `/api/spotify/status`, `/api/agent/status`, and `/api/status/modes` respond locally.
 - Live `agent-working` baseline stayed on `AGENT` / `WORKING`; a later Spotify skip was manually confirmed to interrupt briefly and then return.
 - User confirmed the final Spotify scrolling, skip interrupt, and agent behavior looked good on the LCD.
+- Follow-up long-scroll completion buffer companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 41 tests passed.
+- Follow-up long-scroll completion buffer firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted.
 
 ## Next Steps
 

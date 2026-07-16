@@ -126,7 +126,7 @@ Spotify display rules:
 - Title and artist text is normalized to LCD-safe ASCII before display.
 - Backlight is green, using RGB `0, 210, 12` on the firmware.
 - Fitting Spotify text shows for 12 seconds, then weather shows for 5 seconds.
-- Long Spotify text scrolls once to the final frame at 400 ms per frame, holds there for 3 seconds by default, includes a 2-second display sync buffer, then rotates to weather.
+- Long Spotify text scrolls once to the final frame at 400 ms per frame, includes a one-screen completion buffer, holds the final frame for 3 seconds by default, includes a 2-second display sync buffer, then rotates to weather.
 - Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
 - Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
 - Starting `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; later track changes still interrupt briefly.

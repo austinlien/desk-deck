@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Companion status engine skeleton: choose display states from fake in-memory inputs before real Calendar or Spotify integrations.
+Agent status light bridge: expose local companion endpoints for agent working, waiting, and done states.
 
 ## What Changed
 
@@ -22,6 +22,7 @@ Companion status engine skeleton: choose display states from fake in-memory inpu
 - Documented the future AI-agent red/yellow/green status-light idea.
 - Added fake debug inputs and deterministic companion-side priority selection.
 - Added debug endpoints for reading inputs, updating inputs, and resetting state.
+- Added agent status bridge endpoints for `working`, `waiting`, and `done`.
 
 ## What Works
 
@@ -36,6 +37,7 @@ Companion status engine skeleton: choose display states from fake in-memory inpu
 - Companion test server source is present and returns `/api/status` JSON.
 - Companion server can switch local test modes without firmware changes.
 - Companion server can select status from fake meeting, notification, and Spotify inputs.
+- Companion server can expose explicit agent status lights without firmware changes.
 
 ## Blocked / Unknown
 
@@ -77,10 +79,16 @@ Companion status engine skeleton: choose display states from fake in-memory inpu
 - Live companion server was restarted with debug input endpoints.
 - Live debug inputs selected `IN A MEETING` / `BUSY` while Spotify was also active, confirming meeting priority.
 - Live debug state was reset to default `DESK DECK` / `ONLINE`.
+- Agent status bridge validation passed with FastAPI `TestClient`.
+- Firmware build still passes; no firmware changes were required for the agent bridge.
+- Live companion server was restarted with agent endpoints.
+- Live agent endpoints returned `AGENT` / `WORKING`, `AGENT` / `WAITING`, and `AGENT` / `DONE`.
+- Invalid agent status requests return HTTP 404.
+- Live agent status was reset to default `DESK DECK` / `ONLINE`.
 
 ## Next Steps
 
-1. Confirm ESP32 LCD visually updates when debug inputs are changed.
-2. Commit and push the status engine skeleton.
+1. Confirm ESP32 LCD visually updates for working, waiting, and done.
+2. Commit and push agent status light bridge.
 3. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-4. Next milestone: first real integration, likely Google Calendar OAuth and event polling.
+4. Next milestone: decide whether to wire agent status into a script/hook or move to Google Calendar MVP.

@@ -53,6 +53,28 @@ spotify_paused PAUSED / TEST TRACK / blue
 
 Manual modes override debug inputs until reset.
 
+## Agent Status Light
+
+Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset.
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/working
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/waiting
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/done
+Invoke-RestMethod http://127.0.0.1:8000/api/agent/status
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/reset
+```
+
+States:
+
+```text
+working  AGENT / WORKING / yellow
+waiting  AGENT / WAITING / red
+done     AGENT / DONE / green
+```
+
+Automatic Codex lifecycle detection is not implemented yet. For now, scripts, hooks, or a Codex instruction can call these local bridge endpoints explicitly.
+
 ## Debug Inputs
 
 The debug input endpoints simulate future Calendar, notification, and Spotify integrations without firmware changes. The priority order is:
@@ -81,4 +103,4 @@ Invoke-RestMethod http://127.0.0.1:8000/api/status
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/debug/reset
 ```
 
-Future note: AI-agent status can later map `working` to yellow, `done` to green, and `blocked` or `error` to red.
+Future note: automatic agent status can be revisited when there is a reliable lifecycle signal source.

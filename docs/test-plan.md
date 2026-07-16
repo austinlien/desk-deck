@@ -49,6 +49,15 @@ ONLINE
 - `spotify_playing=true` is ignored while a meeting input is active.
 - Manual mode override wins over fake inputs until reset.
 
+## Agent Status Light Acceptance Criteria
+
+- `POST /api/agent/status/working` returns `AGENT` / `WORKING` / `yellow`.
+- `POST /api/agent/status/waiting` returns `AGENT` / `WAITING` / `red`.
+- `POST /api/agent/status/done` returns `AGENT` / `DONE` / `green`.
+- Agent status overrides manual mode and debug inputs.
+- Invalid agent states return HTTP 404.
+- `POST /api/agent/reset` restores the normal status engine.
+
 ## Test Procedure
 
 1. Install the PlatformIO VS Code extension.
@@ -89,6 +98,21 @@ Invoke-RestMethod http://127.0.0.1:8000/api/status
 Invoke-RestMethod http://127.0.0.1:8000/api/status/modes
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/status/mode/meeting
 Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+## Agent Status Light Procedure
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/working
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/waiting
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/status/done
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/agent/reset
 ```
 
 Confirm the ESP32 LCD shows the selected mode on the next poll.

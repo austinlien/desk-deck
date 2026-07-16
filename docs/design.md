@@ -16,6 +16,7 @@ ESP32-C3 firmware
 Windows companion test server
   -> FastAPI
   -> GET /api/status
+  -> agent status override
   -> configurable in-memory status modes
   -> deterministic priority over fake debug inputs
 ```
@@ -79,6 +80,7 @@ online
 ```
 
 Manual status modes override debug inputs until `/api/debug/reset` is called.
+Agent status overrides both manual modes and debug inputs until `/api/agent/reset` or `/api/debug/reset` is called.
 
 ## Non-Goals For This Milestone
 
@@ -89,4 +91,4 @@ Manual status modes override debug inputs until `/api/debug/reset` is called.
 
 ## Future Feature Notes
 
-- AI-agent status light mode: map `working` to yellow, `done` to green, and `blocked` or `error` to red.
+- Automatic Codex lifecycle detection is deferred until there is a reliable signal source. Current agent status is controlled through explicit local API calls.

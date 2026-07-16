@@ -58,6 +58,40 @@ ONLINE
 - Invalid agent states return HTTP 404.
 - `POST /api/agent/reset` restores the normal status engine.
 
+## Google Calendar MVP Acceptance Criteria
+
+- Companion starts without Calendar credentials and still returns default `/api/status`.
+- Google OAuth credentials and token files live under ignored `companion/secrets/`.
+- `GET /api/calendar/status` reports whether Calendar is configured and available.
+- Declined, all-day, and free events are ignored.
+- Accepted or owned busy timed events count as meetings.
+- A meeting 10 to 5 minutes away returns `MEETING` / `SOON` / `yellow` / `solid`.
+- A meeting 5 minutes away returns `MEETING` / `SOON` / `red` / `solid`.
+- A started meeting returns `MEETING` / `NOW` / `red` / `solid`.
+- Calendar status overrides agent status, then agent status resumes when the meeting state clears.
+- Manual modes override Calendar status.
+- Firmware builds and treats missing `effect` as solid.
+
+## Default Weather Screen Acceptance Criteria
+
+- `POST /api/sensors/inside` accepts `{"temperature_f": 68}` and updates companion weather state.
+- `GET /api/weather/status` returns chip temperature, outside weather, humidity, and composed display status.
+- With no manual mode, Calendar state, active `working`/`waiting` agent status, or debug input, `/api/status` returns compact weather text.
+- `AGENT` / `DONE` remains visible for 5 seconds, then falls back to weather.
+- `AGENT` / `WORKING` and `AGENT` / `WAITING` remain visible until reset or changed.
+- Outside weather comes from San Jose, CA by default and uses cached values if refresh fails.
+- Firmware posts chip temperature once per minute without blocking status polling.
+
+## Spotify MVP Acceptance Criteria
+
+- `GET /api/spotify/status` reports whether Spotify is configured and available.
+- Playing Spotify returns full track title, full first artist, blue backlight, and scroll effect.
+- Firmware scrolls Spotify rows longer than 16 characters every 500 ms with brief start/end pauses.
+- Paused, inactive, non-track, or unavailable Spotify falls back to the next status source.
+- Manual mode, Calendar, and active agent states override Spotify.
+- Spotify overrides debug inputs and weather when active.
+- Spotify credentials and tokens are kept out of Git under `companion/secrets/spotify/`.
+
 ## Test Procedure
 
 1. Install the PlatformIO VS Code extension.
@@ -154,6 +188,76 @@ Invoke-RestMethod `
 
 Invoke-RestMethod http://127.0.0.1:8000/api/status
 ```
+
+## Google Calendar MVP Procedure
+
+With the Python 3.11 venv active:
+
+```powershell
+cd companion
+.\.venv311\Scripts\python.exe -m pytest
+```
+
+With Google OAuth files present:
+
+```powershell
+.\.venv311\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+Invoke-RestMethod http://127.0.0.1:8000/api/calendar/status
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Create a short accepted busy Calendar event and confirm the ESP32 shows `MEETING` / `SOON`, first yellow, then red, then `MEETING` / `NOW` after the start time.
+
+## Default Weather Screen Procedure
+
+With the companion server running:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/sensors/inside `
+  -Body '{"temperature_f":68}'
+
+Invoke-RestMethod http://127.0.0.1:8000/api/weather/status
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Confirm `/api/status` shows:
+
+```text
+CHIP 68F
+OUT <temp>F <humidity>%
+```
+
+Upload firmware and confirm Serial logs show periodic chip temperature POST results.
+
+## Spotify MVP Procedure
+
+Configure a Spotify app with redirect URI:
+
+```text
+http://127.0.0.1:8888/callback
+```
+
+Start the companion server with:
+
+```powershell
+$env:DESK_DECK_SPOTIFY_CLIENT_ID = "your_spotify_client_id"
+$env:DESK_DECK_SPOTIFY_CLIENT_SECRET = "your_spotify_client_secret"
+$env:DESK_DECK_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
+$env:DESK_DECK_SPOTIFY_TOKEN = "secrets/spotify/token.json"
+.\.venv311\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/spotify/status
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Play a Spotify track and confirm the LCD shows the track title and artist in blue, scrolling rows longer than 16 characters. Pause playback and confirm the display falls back to weather or the next active higher-priority state.
 
 ## Refactor Regression Checks
 

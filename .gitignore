@@ -24,6 +24,8 @@ venv/
 
 # Secrets and local config
 firmware/src/secrets.h
+companion/secrets/
+companion/secrets/spotify/
 config.local.*
 *.local
 

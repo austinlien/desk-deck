@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Agent status script workflow: provide repo-local scripts and AGENTS.md guidance for updating the Desk Deck agent status light.
+Spotify MVP: show currently playing Spotify track from the Windows companion, scrolling long title/artist rows on the ESP32 LCD.
 
 ## What Changed
 
@@ -25,6 +25,25 @@ Agent status script workflow: provide repo-local scripts and AGENTS.md guidance 
 - Added agent status bridge endpoints for `working`, `waiting`, and `done`.
 - Added repo-local PowerShell scripts for setting agent `working`, `waiting`, `done`, and reset states.
 - Added root `AGENTS.md` instructions for using the status scripts during Codex work.
+- Refactored the companion into models, status engine, and Google Calendar source modules.
+- Added optional Google Calendar read-only OAuth support using ignored files under `companion/secrets/`.
+- Added privacy-preserving Calendar meeting states: yellow `MEETING` / `SOON` at 10 minutes, red `MEETING` / `SOON` at 5 minutes, and solid red `MEETING` / `NOW` after meeting start.
+- Updated Calendar priority so meeting states interrupt agent status, then the previous agent status resumes when Calendar clears.
+- Added a default weather screen with ESP32 chip temperature and San Jose outside weather.
+- Added `POST /api/sensors/inside` and `GET /api/weather/status` to the companion.
+- Added firmware-side chip temperature posting once per minute using `temperatureRead()`.
+- Added `AGENT / DONE` 5-second hold before falling back to weather.
+- Added optional Spotify currently-playing source in the companion.
+- Added `GET /api/spotify/status` for Spotify debugging.
+- Added Spotify status priority below Calendar and active agent states, above debug/weather.
+- Extended `/api/status` responses with optional `effect`, defaulting to `solid`.
+- Added firmware-side flash support so the LCD backlight can blink locally between HTTP polls.
+- Updated Spotify status to send the full track title and first artist with `effect: scroll`.
+- Added firmware-side scrolling for rows longer than 16 characters at 500 ms per frame with brief pauses.
+- Lowered firmware status polling from 5 seconds to 1 second so Spotify song skips update more quickly.
+- Added a short Google Calendar event cache/backoff so faster ESP32 polling does not call Calendar on every `/api/status` request.
+- Added companion tests for Calendar timing, event filtering, and override priority.
+- Updated README and docs for Calendar setup, behavior, and validation.
 
 ## What Works
 
@@ -41,6 +60,12 @@ Agent status script workflow: provide repo-local scripts and AGENTS.md guidance 
 - Companion server can select status from fake meeting, notification, and Spotify inputs.
 - Companion server can expose explicit agent status lights without firmware changes.
 - Agent status scripts can be used by Codex or the user without typing direct API calls.
+- Companion server can optionally derive status from Google Calendar without showing event titles.
+- Calendar status takes priority over agent status while preserving the agent state for later resume.
+- Companion can show `CHIP 68F` / `OUT 74F 45%` as the default status.
+- Firmware can post chip temperature readings to the companion without a new local secret.
+- Companion can show full Spotify track title and artist with blue backlight when playback is active.
+- Firmware can render solid, flashing backlight, and scrolling text effects from companion JSON.
 
 ## Blocked / Unknown
 
@@ -48,6 +73,23 @@ Agent status script workflow: provide repo-local scripts and AGENTS.md guidance 
 - LCD did not display text reliably at `3V3`.
 - Using `5V` for LCD VCC may expose ESP32-C3 I2C pins to 5 V unless the LCD module provides level shifting.
 - Use `python3.11` for the companion FastAPI venv; the default `python` points to a Python 3.14 build that cannot install `pydantic-core` cleanly on this machine.
+- Google Calendar live validation still requires local OAuth credentials in `companion/secrets/credentials.json`.
+
+## TBD
+
+- Implement Spotify plus current temperatures as a rotating default screen.
+  - When Spotify text fits without scrolling, hold the Spotify screen for a configurable duration, then show the current temperature screen for a configurable duration.
+  - When Spotify text needs scrolling, scroll to the end, hold the final frame for a configurable duration, then show the current temperature screen for a configurable duration.
+  - Resolve this TBD after the rotation behavior is implemented, tested, and validated on the LCD.
+- Implement Spotify song-skip interrupt behavior.
+  - When the currently playing Spotify track changes, briefly show the new song no matter what higher-priority event/status is currently on screen.
+  - Keep the Spotify text screen using the backlight color of the interrupted event/status rather than forcing Spotify blue.
+  - After the short song-change display window, return to the interrupted event/status.
+  - Resolve this TBD after skip detection, interrupt priority, color inheritance, return behavior, and LCD validation are implemented.
+- Explore a current-time secondary display mode.
+  - Consider showing current time alongside another useful context value, such as elapsed time in a game/session.
+  - Define the source of the secondary value, priority rules, and LCD layout before implementation.
+  - Resolve this TBD after the use case is clarified and either implemented or intentionally deferred.
 
 ## Validation
 
@@ -91,9 +133,26 @@ Agent status script workflow: provide repo-local scripts and AGENTS.md guidance 
 - Agent status scripts validated `working`, `waiting`, `done`, and reset against the live companion server.
 - Agent status scripts fail softly with a warning when the companion server is unavailable.
 - Firmware build regression still passes after adding the scripts and `AGENTS.md`.
+- Companion dependencies installed successfully in `.venv311`, including Google Calendar client libraries and pytest.
+- Calendar MVP validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 8 tests passed.
+- Firmware flash-effect build validation passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Default weather validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 15 tests passed.
+- Firmware sensor POST build validation passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Spotify MVP validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
+- Spotify scroll validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
+- Spotify scroll firmware build passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Spotify scroll firmware upload succeeded to `COM5` with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run -t upload`.
+- Pre-push companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 22 tests passed.
+- Pre-push firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Pre-push live API smoke test passed for status modes, agent states, manual priority, debug input storage, weather sensor update, Spotify scroll status, and Calendar status read.
+- Fast Spotify refresh validation passed with `.\.venv311\Scripts\python.exe -m pytest`: 24 tests passed.
+- Fast Spotify refresh firmware build passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Fast Spotify refresh firmware upload succeeded to `COM5` with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run -t upload`.
 
 ## Next Steps
 
-1. Commit and push agent status script workflow.
-2. Confirm the LCD module's I2C electrical design before long-term 5 V use.
-3. Next milestone: Google Calendar MVP or deeper automation for Codex lifecycle signals.
+1. Create a Spotify app and configure `http://127.0.0.1:8888/callback` as a redirect URI.
+2. Start the companion with Spotify client ID and secret environment variables.
+3. Complete the browser login from `GET /api/spotify/status`.
+4. Play a track and confirm the LCD shows title and artist in blue.
+5. Confirm the LCD module's I2C electrical design before long-term 5 V use.

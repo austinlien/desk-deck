@@ -2,14 +2,14 @@
 
 Desk Deck is a personal embedded desk-status display built around an ESP32-C3 and a 16x2 RGB I2C LCD.
 
-The current milestone is intentionally small: bring up the LCD hardware and display a fixed two-line message.
+The current milestone is a Wi-Fi desk status display with a local Windows companion server, optional Google Calendar meeting status, optional Spotify currently-playing status, and a default weather screen.
 
 ```text
-DESK DECK
-HARDWARE OK
+CHIP 68F
+OUT 74F 45%
 ```
 
-Future milestones will add Wi-Fi, a local Windows companion app, Google Calendar status, Spotify status, and offline behavior.
+Future milestones will add Spotify status and richer offline behavior.
 
 ## Current Scope
 
@@ -18,14 +18,17 @@ Future milestones will add Wi-Fi, a local Windows companion app, Google Calendar
 - PlatformIO + Arduino framework
 - I2C scan over Serial
 - Wi-Fi connection
-- HTTP polling from a local companion test server
+- HTTP polling from a local companion server
+- Optional Google Calendar meeting status
+- Optional Spotify currently-playing status
+- Default inside/outside weather display
 - LCD status text and RGB backlight from server JSON
 
 ## Repository Layout
 
 ```text
 firmware/          ESP32-C3 PlatformIO firmware
-companion/         Local FastAPI test server
+companion/         Local FastAPI companion server
 docs/              Design, hardware, decisions, and testing notes
 status.md          Current project status and next steps
 ```

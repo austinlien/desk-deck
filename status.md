@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Configurable local status modes: switch companion-server display states without changing firmware.
+Companion status engine skeleton: choose display states from fake in-memory inputs before real Calendar or Spotify integrations.
 
 ## What Changed
 
@@ -20,6 +20,8 @@ Configurable local status modes: switch companion-server display states without 
 - Updated docs for Wi-Fi MVP setup and testing.
 - Added in-memory companion status modes and mode-switching endpoints.
 - Documented the future AI-agent red/yellow/green status-light idea.
+- Added fake debug inputs and deterministic companion-side priority selection.
+- Added debug endpoints for reading inputs, updating inputs, and resetting state.
 
 ## What Works
 
@@ -33,6 +35,7 @@ Configurable local status modes: switch companion-server display states without 
 - Refactored firmware builds successfully with PlatformIO.
 - Companion test server source is present and returns `/api/status` JSON.
 - Companion server can switch local test modes without firmware changes.
+- Companion server can select status from fake meeting, notification, and Spotify inputs.
 
 ## Blocked / Unknown
 
@@ -70,9 +73,14 @@ Configurable local status modes: switch companion-server display states without 
 - Invalid mode requests return HTTP 404.
 - Live server switched to `meeting` and back to `online`.
 - Firmware build still passes; no firmware changes were required for this milestone.
+- Status engine validation passed with FastAPI `TestClient`.
+- Live companion server was restarted with debug input endpoints.
+- Live debug inputs selected `IN A MEETING` / `BUSY` while Spotify was also active, confirming meeting priority.
+- Live debug state was reset to default `DESK DECK` / `ONLINE`.
 
 ## Next Steps
 
-1. Confirm ESP32 LCD visually updates when modes are switched.
-2. Commit and push configurable status modes.
+1. Confirm ESP32 LCD visually updates when debug inputs are changed.
+2. Commit and push the status engine skeleton.
 3. Confirm the LCD module's I2C electrical design before long-term 5 V use.
+4. Next milestone: first real integration, likely Google Calendar OAuth and event polling.

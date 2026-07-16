@@ -48,6 +48,37 @@ meeting_soon  MEETING / IN 5 / yellow
 meeting       IN A MEETING / BUSY / red
 music         NOW PLAYING / TEST TRACK / blue
 notify        SERVER TEST / NOTICE / purple
+spotify_paused PAUSED / TEST TRACK / blue
+```
+
+Manual modes override debug inputs until reset.
+
+## Debug Inputs
+
+The debug input endpoints simulate future Calendar, notification, and Spotify integrations without firmware changes. The priority order is:
+
+```text
+meeting_soon
+active_meeting
+notification
+spotify_playing
+spotify_paused
+online
+```
+
+Examples:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/debug/inputs
+
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/debug/inputs `
+  -Body '{"active_meeting":true,"spotify_playing":true}'
+
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/debug/reset
 ```
 
 Future note: AI-agent status can later map `working` to yellow, `done` to green, and `blocked` or `error` to red.

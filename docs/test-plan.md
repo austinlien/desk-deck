@@ -36,10 +36,18 @@ ONLINE
 ## Configurable Status Modes Acceptance Criteria
 
 - `GET /api/status` defaults to `DESK DECK` / `ONLINE` / `green`.
-- `GET /api/status/modes` lists `online`, `idle`, `meeting_soon`, `meeting`, `music`, and `notify`.
+- `GET /api/status/modes` lists `online`, `idle`, `meeting_soon`, `meeting`, `music`, `notify`, and `spotify_paused`.
 - `POST /api/status/mode/meeting` changes the active status to `IN A MEETING` / `BUSY` / `red`.
 - Invalid mode names return HTTP 404.
 - ESP32 LCD updates on the next poll without firmware changes.
+
+## Status Engine Skeleton Acceptance Criteria
+
+- `POST /api/debug/reset` returns default `DESK DECK` / `ONLINE` / `green`.
+- `active_meeting=true` returns `IN A MEETING` / `BUSY` / `red`.
+- `meeting_soon=true` wins over `active_meeting=true`.
+- `spotify_playing=true` is ignored while a meeting input is active.
+- Manual mode override wins over fake inputs until reset.
 
 ## Test Procedure
 
@@ -84,6 +92,28 @@ Invoke-RestMethod http://127.0.0.1:8000/api/status
 ```
 
 Confirm the ESP32 LCD shows the selected mode on the next poll.
+
+## Status Engine Skeleton Procedure
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/debug/reset
+
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/debug/inputs `
+  -Body '{"active_meeting":true,"spotify_playing":true}'
+
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+
+Invoke-RestMethod `
+  -Method Post `
+  -ContentType "application/json" `
+  -Uri http://127.0.0.1:8000/api/debug/inputs `
+  -Body '{"meeting_soon":true,"active_meeting":true}'
+
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
 
 ## Refactor Regression Checks
 

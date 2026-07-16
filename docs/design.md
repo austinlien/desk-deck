@@ -17,6 +17,7 @@ Windows companion test server
   -> FastAPI
   -> GET /api/status
   -> configurable in-memory status modes
+  -> deterministic priority over fake debug inputs
 ```
 
 There is no Calendar integration, Spotify integration, OAuth, persistent config, or local LLM integration in this milestone.
@@ -63,6 +64,21 @@ The Windows companion app should eventually own:
 - Text shortening
 - Optional local LLM integration
 - REST API for the ESP32
+
+## Current Companion Priority
+
+The companion server currently uses fake debug inputs to exercise the future priority engine:
+
+```text
+meeting_soon
+active_meeting
+notification
+spotify_playing
+spotify_paused
+online
+```
+
+Manual status modes override debug inputs until `/api/debug/reset` is called.
 
 ## Non-Goals For This Milestone
 

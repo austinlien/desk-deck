@@ -10,6 +10,19 @@ class DisplayStatus(BaseModel):
     backlight: str
 
 
+class StatusInputs(BaseModel):
+    meeting_soon: bool = False
+    active_meeting: bool = False
+    notification: bool = False
+    spotify_playing: bool = False
+    spotify_paused: bool = False
+
+
+class DebugState(BaseModel):
+    manual_override: str | None
+    inputs: StatusInputs
+
+
 STATUS_MODES: dict[str, DisplayStatus] = {
     "online": DisplayStatus(
         line1="DESK DECK",
@@ -41,14 +54,37 @@ STATUS_MODES: dict[str, DisplayStatus] = {
         line2="NOTICE",
         backlight="purple",
     ),
+    "spotify_paused": DisplayStatus(
+        line1="PAUSED",
+        line2="TEST TRACK",
+        backlight="blue",
+    ),
 }
 
-active_mode = "online"
+active_mode: str | None = None
+status_inputs = StatusInputs()
+
+
+def select_status() -> DisplayStatus:
+    if active_mode is not None:
+        return STATUS_MODES[active_mode]
+
+    if status_inputs.meeting_soon:
+        return STATUS_MODES["meeting_soon"]
+    if status_inputs.active_meeting:
+        return STATUS_MODES["meeting"]
+    if status_inputs.notification:
+        return STATUS_MODES["notify"]
+    if status_inputs.spotify_playing:
+        return STATUS_MODES["music"]
+    if status_inputs.spotify_paused:
+        return STATUS_MODES["spotify_paused"]
+    return STATUS_MODES["online"]
 
 
 @app.get("/api/status", response_model=DisplayStatus)
 def get_status() -> DisplayStatus:
-    return STATUS_MODES[active_mode]
+    return select_status()
 
 
 @app.get("/api/status/modes")
@@ -64,4 +100,26 @@ def set_status_mode(mode_name: str) -> DisplayStatus:
         raise HTTPException(status_code=404, detail=f"Unknown status mode: {mode_name}")
 
     active_mode = mode_name
-    return STATUS_MODES[active_mode]
+    return select_status()
+
+
+@app.get("/api/debug/inputs", response_model=DebugState)
+def get_debug_inputs() -> DebugState:
+    return DebugState(manual_override=active_mode, inputs=status_inputs)
+
+
+@app.post("/api/debug/inputs", response_model=DebugState)
+def set_debug_inputs(inputs: StatusInputs) -> DebugState:
+    global status_inputs
+
+    status_inputs = inputs
+    return DebugState(manual_override=active_mode, inputs=status_inputs)
+
+
+@app.post("/api/debug/reset", response_model=DisplayStatus)
+def reset_debug_state() -> DisplayStatus:
+    global active_mode, status_inputs
+
+    active_mode = None
+    status_inputs = StatusInputs()
+    return select_status()

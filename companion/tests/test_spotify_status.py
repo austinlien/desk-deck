@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import httpx
+
 from app import status_engine
 from app.models import DisplayStatus, SpotifyState, SpotifyTrack
 from app.spotify_source import SpotifySource
@@ -38,14 +40,25 @@ class FakeCalendarSource:
 
 
 class FakeHttpSpotifySource(SpotifySource):
-    def __init__(self, payload: dict | None) -> None:
-        super().__init__(client_id="client", client_secret="secret")
+    def __init__(self, payload: dict | None, clock=None) -> None:
+        super().__init__(
+            client_id="client",
+            client_secret="secret",
+            cache_seconds=5,
+            error_backoff_seconds=30,
+            clock=clock or (lambda: 0.0),
+        )
         self.payload = payload
+        self.exception: Exception | None = None
+        self.fetch_count = 0
 
     def _access_token(self) -> str:
         return "token"
 
     def _fetch_payload(self, token: str):
+        self.fetch_count += 1
+        if self.exception is not None:
+            raise self.exception
         return self.payload
 
 
@@ -357,6 +370,64 @@ def test_spotify_source_normalizes_lcd_unsafe_characters() -> None:
     )
 
 
+def test_spotify_source_caches_current_playback_between_status_polls() -> None:
+    source = FakeHttpSpotifySource(
+        {
+            "is_playing": True,
+            "currently_playing_type": "track",
+            "item": {
+                "name": "Cached Song",
+                "artists": [{"name": "Cached Artist"}],
+            },
+        }
+    )
+
+    first = source.select_status()
+    second = source.select_status()
+
+    assert first.status == DisplayStatus(
+        line1="Cached Song",
+        line2="Cached Artist",
+        backlight="green",
+        effect="scroll",
+    )
+    assert second.status == first.status
+    assert source.fetch_count == 1
+
+
+def test_spotify_source_keeps_last_song_during_rate_limit_backoff() -> None:
+    clock_value = [0.0]
+    source = FakeHttpSpotifySource(
+        {
+            "is_playing": True,
+            "currently_playing_type": "track",
+            "item": {
+                "name": "Last Good Song",
+                "artists": [{"name": "Last Good Artist"}],
+            },
+        },
+        clock=lambda: clock_value[0],
+    )
+    first = source.select_status()
+
+    clock_value[0] = 6.0
+    source.exception = _spotify_http_error(429, retry_after="10")
+    limited = source.select_status()
+
+    clock_value[0] = 7.0
+    still_backed_off = source.select_status()
+
+    assert first.status == DisplayStatus(
+        line1="Last Good Song",
+        line2="Last Good Artist",
+        backlight="green",
+        effect="scroll",
+    )
+    assert limited.status == first.status
+    assert still_backed_off.status == first.status
+    assert source.fetch_count == 2
+
+
 def test_spotify_source_ignores_paused_playback() -> None:
     source = FakeHttpSpotifySource(
         {
@@ -372,3 +443,12 @@ def test_spotify_source_ignores_paused_playback() -> None:
     state = source.select_status()
 
     assert state.status is None
+
+
+def _spotify_http_error(status_code: int, retry_after: str | None = None) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://api.spotify.com/v1/me/player/currently-playing")
+    headers = {}
+    if retry_after is not None:
+        headers["Retry-After"] = retry_after
+    response = httpx.Response(status_code, headers=headers, request=request)
+    return httpx.HTTPStatusError(f"HTTP {status_code}", request=request, response=response)

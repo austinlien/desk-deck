@@ -118,6 +118,8 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Fitting Spotify hold reduction firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`; live companion was restarted.
 - Long Spotify final-frame hold was shortened to about 1-2 seconds; companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 42 tests passed.
 - Long Spotify final-frame hold firmware build and upload succeeded to `COM5`; live companion was restarted.
+- Spotify API polling cache/backoff companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 44 tests passed.
+- Spotify API polling cache/backoff firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
 
 ## Next Steps
 

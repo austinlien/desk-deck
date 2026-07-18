@@ -8,6 +8,8 @@ from typing import Any
 from .models import DisplayStatus, SpotifyState, SpotifyTrack
 from .spotify_source import _normalize_line
 
+REFRESH_INTERVAL_SECONDS = 0.25
+
 
 class WindowsMediaSpotifySource:
     """Maintains the currently playing local Spotify track from Windows media sessions."""
@@ -87,10 +89,11 @@ class WindowsMediaSpotifySource:
 
         while not self._stop_event.is_set():
             try:
-                await asyncio.wait_for(self._refresh_event.wait(), timeout=0.5)
+                await asyncio.wait_for(self._refresh_event.wait(), timeout=REFRESH_INTERVAL_SECONDS)
             except asyncio.TimeoutError:
-                continue
-            self._refresh_event.clear()
+                pass
+            else:
+                self._refresh_event.clear()
             await self._refresh()
 
         self._remove_session_handlers()

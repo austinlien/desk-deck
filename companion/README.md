@@ -119,6 +119,7 @@ On first use, a browser login opens and creates the ignored token file under `co
 Spotify display rules:
 
 - Active local Spotify is event-driven and takes precedence over the remote fallback.
+- The companion also refreshes the local Windows media session four times per second as a safeguard when Spotify begins playing after the companion starts; this does not call Spotify's Web API.
 - When local Spotify is paused or absent, a playing remote Spotify device can appear through the fallback.
 - Local Windows playback needs no Spotify credentials; credentials are needed only for remote-device fallback.
 - Manual modes, Calendar, and active agent states override Spotify.
@@ -156,6 +157,16 @@ $env:DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS = "30"
 ```
 
 Run this command from the repository root. It loads `companion/secrets/local-env.ps1` when present, then starts Uvicorn from the companion directory.
+
+## Demo recording cycle
+
+With the companion running, use the repo-root demo script to cycle through notification, meeting, agent, song-skip, music, temperature, and time states for a recording:
+
+```powershell
+.\scripts\demo-cycle.ps1
+```
+
+Each state stays visible for five seconds by default. `MEETING / NOW` flashes red, `MR BRIGHTSIDE / THE KILLERS` interrupts `AGENT / WORKING`, and `ONE DANCE / DRAKE` precedes the final temperature/time rotation. Use `-HoldSeconds 3` for a faster recording or `-Loops 0` to repeat until you press `Ctrl+C`. The script always resets debug and agent state when it finishes.
 
 Find the Windows computer's LAN IP with:
 

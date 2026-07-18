@@ -166,6 +166,57 @@ def test_spotify_paused_or_absent_falls_back_to_weather() -> None:
     assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
 
 
+def test_debug_spotify_track_can_interrupt_agent_working_after_a_song_skip() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    status_engine.set_status_inputs(
+        status_engine.StatusInputs(
+            spotify_playing=True,
+            spotify_title="Somebody Told Me",
+            spotify_artist="The Killers",
+        )
+    )
+    status_engine.set_agent_status_value("working", now=now)
+
+    assert status_engine.select_status(now) == status_engine.AGENT_STATUSES["working"]
+
+    status_engine.set_status_inputs(
+        status_engine.StatusInputs(
+            spotify_playing=True,
+            spotify_title="Mr. Brightside",
+            spotify_artist="The Killers",
+        )
+    )
+
+    assert status_engine.select_status(now + timedelta(seconds=1)) == DisplayStatus(
+        line1="Mr. Brightside",
+        line2="The Killers",
+        backlight="yellow",
+        effect="solid",
+    )
+
+
+def test_demo_default_rotation_suppresses_live_spotify() -> None:
+    status_engine.set_spotify_source(
+        FakeSpotifySource(DisplayStatus(line1="Live Song", line2="Live Artist", backlight="green"))
+    )
+    status_engine.set_status_inputs(status_engine.StatusInputs(demo_default_rotation=True))
+
+    status = status_engine.select_status(datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc))
+
+    assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+
+
+def test_debug_meeting_now_flashes() -> None:
+    status_engine.set_status_inputs(status_engine.StatusInputs(active_meeting=True))
+
+    assert status_engine.select_debug_status() == DisplayStatus(
+        line1="MEETING",
+        line2="NOW",
+        backlight="red",
+        effect="flash",
+    )
+
+
 def test_agent_status_overrides_spotify() -> None:
     status_engine.set_spotify_source(
         FakeSpotifySource(DisplayStatus(line1="Song", line2="Artist", backlight="green"))
@@ -290,6 +341,23 @@ def test_agent_status_resets_spotify_baseline_before_interrupts() -> None:
     status_engine.set_agent_status_value("working", now=now + timedelta(seconds=1))
 
     assert status_engine.select_status(now + timedelta(seconds=2)) == status_engine.AGENT_STATUSES["working"]
+
+
+def test_repeated_agent_working_update_keeps_spotify_skip_baseline() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    source = FakeSpotifySource(DisplayStatus(line1="Song A", line2="Artist", backlight="green"))
+    status_engine.set_spotify_source(source)
+    status_engine.set_agent_status_value("working", now=now)
+    assert status_engine.select_status(now) == status_engine.AGENT_STATUSES["working"]
+
+    status_engine.set_agent_status_value("working", now=now + timedelta(seconds=1))
+    source.status = DisplayStatus(line1="Song B", line2="Artist", backlight="green")
+
+    assert status_engine.select_status(now + timedelta(seconds=2)) == DisplayStatus(
+        line1="Song B",
+        line2="Artist",
+        backlight="yellow",
+    )
 
 
 def test_spotify_interrupt_continues_if_manual_status_clears_then_resumes_rotation() -> None:

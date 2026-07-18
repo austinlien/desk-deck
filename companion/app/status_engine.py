@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from .models import CalendarState, DisplayStatus, SpotifyState, StatusInputs, WeatherState
+from .models import CalendarState, DisplayStatus, SpotifyState, SpotifyTrack, StatusInputs, WeatherState
 
 
 class CalendarStatusSource(Protocol):
@@ -72,9 +72,10 @@ STATUS_MODES: dict[str, DisplayStatus] = {
         backlight="yellow",
     ),
     "meeting": DisplayStatus(
-        line1="IN A MEETING",
-        line2="BUSY",
+        line1="MEETING",
+        line2="NOW",
         backlight="red",
+        effect="flash",
     ),
     "music": DisplayStatus(
         line1="NOW PLAYING",
@@ -144,10 +145,11 @@ def set_spotify_source(source: SpotifyStatusSource | None) -> None:
 def set_agent_status_value(state: str | None, now: datetime | None = None) -> None:
     global agent_status, agent_updated_at, agent_done_at
     current = now or datetime.now().astimezone()
+    was_active = agent_status in {"working", "waiting"}
     agent_status = state
     agent_updated_at = current if state in {"working", "waiting"} else None
     agent_done_at = current if state == "done" else None
-    if state in {"working", "waiting"}:
+    if state in {"working", "waiting"} and not was_active:
         reset_spotify_interrupt()
         reset_spotify_track_baseline()
 
@@ -226,7 +228,9 @@ def select_debug_status() -> DisplayStatus:
     if status_inputs.notification:
         return STATUS_MODES["notify"]
     if status_inputs.spotify_playing:
-        return STATUS_MODES["music"]
+        debug_spotify = select_debug_spotify_status()
+        if debug_spotify is not None:
+            return debug_spotify
     if status_inputs.spotify_paused:
         return STATUS_MODES["spotify_paused"]
     return STATUS_MODES["online"]
@@ -263,6 +267,24 @@ def get_weather_state(now: datetime | None = None) -> WeatherState | None:
 
 
 def select_spotify_status() -> SpotifyState:
+    if status_inputs.demo_default_rotation:
+        return SpotifyState(enabled=True, configured=True, available=True)
+
+    debug_spotify = select_debug_spotify_status()
+    if debug_spotify is not None:
+        return SpotifyState(
+            enabled=True,
+            configured=True,
+            available=True,
+            source="debug",
+            track=SpotifyTrack(
+                title=debug_spotify.line1,
+                artist=debug_spotify.line2,
+                is_playing=True,
+            ),
+            status=debug_spotify,
+        )
+
     if spotify_source is None:
         return SpotifyState(
             enabled=False,
@@ -271,6 +293,20 @@ def select_spotify_status() -> SpotifyState:
             detail="Spotify source is not configured.",
         )
     return spotify_source.select_status()
+
+
+def select_debug_spotify_status() -> DisplayStatus | None:
+    if not status_inputs.spotify_playing:
+        return None
+
+    title = status_inputs.spotify_title or STATUS_MODES["music"].line2
+    artist = status_inputs.spotify_artist or "TEST ARTIST"
+    return DisplayStatus(
+        line1=title,
+        line2=artist,
+        backlight="green",
+        effect="scroll",
+    )
 
 
 def select_status(now: datetime | None = None) -> DisplayStatus:

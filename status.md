@@ -37,6 +37,9 @@ Spotify hybrid playback: show local Spotify desktop tracks from Windows media-se
 - Added Windows media-session Spotify detection as the primary, event-driven source for local desktop playback.
 - Added a hybrid Spotify source that uses the Web API only as a 30-second fallback for remote-device playback.
 - Added the Spotify diagnostic `source` field (`windows` or `spotify_api`) without changing the LCD status response.
+- Added `scripts/demo-cycle.ps1` to cycle recording-friendly display states and reset the companion afterward.
+- Expanded the demo cycle with flashing `MEETING / NOW`, a simulated `MR BRIGHTSIDE` song skip during agent working, `ONE DANCE`, and a final temperature/time rotation.
+- Fixed Windows Spotify detection after startup by periodically refreshing the local media session; repeated `AGENT / WORKING` updates now preserve the song-skip baseline.
 - Added `GET /api/spotify/status` for Spotify debugging.
 - Added Spotify status priority below Calendar and active agent states, above debug/weather.
 - Extended `/api/status` responses with optional `effect`, defaulting to `solid`.
@@ -129,6 +132,8 @@ Spotify hybrid playback: show local Spotify desktop tracks from Windows media-se
 - Recovered the stopped live companion with `.\scripts\start-companion.ps1 -RestartExisting`; Spotify authorization is valid and `/api/status` again returns the active track with green `scroll_once` display settings.
 - Hybrid Spotify regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 48 tests passed.
 - Live companion restart confirmed the active Spotify track through Windows media sessions with `/api/spotify/status` reporting `source: "windows"`.
+- Demo-cycle regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 51 tests passed; a live shortened cycle completed and reset all temporary demo state.
+- Windows Spotify refresh regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 52 tests passed; live restart verified `/api/spotify/status` returns the active local track with `source: "windows"`.
 
 ## Next Steps
 

@@ -25,6 +25,12 @@ class DebugState(BaseModel):
     inputs: StatusInputs
 
 
+class WorkState(BaseModel):
+    running: bool
+    elapsed_seconds: int = 0
+    completion_elapsed_seconds: int | None = None
+
+
 class CalendarState(BaseModel):
     enabled: bool
     available: bool

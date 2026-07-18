@@ -79,9 +79,27 @@ $env:DESK_DECK_AGENT_ACTIVE_TTL_SECONDS = "300"
 
 `AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset, changed, or the active-state TTL expires.
 
-## Spotify MVP
+## Personal work stopwatch
 
-Spotify uses Windows media-session events as the primary source for Spotify playing on this PC. A local song skip reaches the LCD on its next one-second status poll without calling Spotify's Web API. The Spotify Web API remains an optional 30-second fallback for playback on a phone, speaker, or another computer.
+Start a personal, elapsed-time work session from the repository root:
+
+```powershell
+.\scripts\work-start.ps1
+```
+
+The LCD shows `WORKING` and a live `HH:MM:SS` elapsed time. Run the following whenever you finish; it briefly shows `SESSION DONE` and the final duration before returning to normal rotation:
+
+```powershell
+.\scripts\work-stop.ps1
+```
+
+The work session is intentionally in-memory only, so it resets if the companion restarts. Manual modes and Calendar override it; active agent states override a running work clock. An explicit `SESSION DONE` confirmation appears above active agent status for five seconds.
+
+## Spotify support
+
+Spotify uses Windows media-session events as the primary source for Spotify playing on this PC. A local song skip reaches the LCD on its next one-second status poll without calling Spotify's Web API. The companion also refreshes that local source four times per second, so it detects Spotify even if the app was paused when the companion started. The Spotify Web API remains an optional 30-second fallback for playback on a phone, speaker, or another computer.
+
+No Spotify credentials are needed for local Windows desktop playback. Configure the following only when you want remote-device fallback.
 
 1. Create a Spotify app at <https://developer.spotify.com/dashboard>.
 2. Add this redirect URI to the Spotify app:
@@ -119,7 +137,7 @@ On first use, a browser login opens and creates the ignored token file under `co
 Spotify display rules:
 
 - Active local Spotify is event-driven and takes precedence over the remote fallback.
-- The companion also refreshes the local Windows media session four times per second as a safeguard when Spotify begins playing after the companion starts; this does not call Spotify's Web API.
+- The companion refreshes the local Windows media session four times per second as a safeguard when Spotify begins playing after the companion starts; this does not call Spotify's Web API.
 - When local Spotify is paused or absent, a playing remote Spotify device can appear through the fallback.
 - Local Windows playback needs no Spotify credentials; credentials are needed only for remote-device fallback.
 - Manual modes, Calendar, and active agent states override Spotify.
@@ -133,7 +151,7 @@ Spotify display rules:
 - Long Spotify text scrolls once to the final frame at 400 ms per frame, holds the final frame briefly, then rotates to weather.
 - Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
 - Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
-- Starting `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; later track changes still interrupt briefly.
+- Entering `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; repeated updates to the same active state keep the baseline, allowing later song skips to interrupt briefly.
 
 Optional rotation environment variables:
 

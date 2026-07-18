@@ -40,6 +40,8 @@ Spotify hybrid playback: show local Spotify desktop tracks from Windows media-se
 - Added `scripts/demo-cycle.ps1` to cycle recording-friendly display states and reset the companion afterward.
 - Expanded the demo cycle with flashing `MEETING / NOW`, a simulated `MR BRIGHTSIDE` song skip during agent working, `ONE DANCE`, and a final temperature/time rotation.
 - Fixed Windows Spotify detection after startup by periodically refreshing the local media session; repeated `AGENT / WORKING` updates now preserve the song-skip baseline.
+- Updated root and companion README files for local Windows Spotify, the remote fallback, agent song-skip behavior, and demo recording support.
+- Added a personal in-memory work stopwatch with start/stop scripts, live elapsed-time display, Spotify skip interrupts, and a five-second completion screen.
 - Added `GET /api/spotify/status` for Spotify debugging.
 - Added Spotify status priority below Calendar and active agent states, above debug/weather.
 - Extended `/api/status` responses with optional `effect`, defaulting to `solid`.
@@ -134,6 +136,7 @@ Spotify hybrid playback: show local Spotify desktop tracks from Windows media-se
 - Live companion restart confirmed the active Spotify track through Windows media sessions with `/api/spotify/status` reporting `source: "windows"`.
 - Demo-cycle regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 51 tests passed; a live shortened cycle completed and reset all temporary demo state.
 - Windows Spotify refresh regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 52 tests passed; live restart verified `/api/spotify/status` returns the active local track with `source: "windows"`.
+- Work stopwatch regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 58 tests passed; live start/stop scripts showed `WORKING / 00:00:01` then `SESSION DONE / 00:00:01`.
 
 ## Next Steps
 

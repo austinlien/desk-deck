@@ -54,6 +54,7 @@ class SpotifyState(BaseModel):
     enabled: bool
     configured: bool
     available: bool
+    source: str | None = None
     track: SpotifyTrack | None = None
     status: DisplayStatus | None = None
     detail: str | None = None

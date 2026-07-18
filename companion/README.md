@@ -81,7 +81,7 @@ $env:DESK_DECK_AGENT_ACTIVE_TTL_SECONDS = "300"
 
 ## Spotify MVP
 
-Spotify support uses the Spotify Web API to show the currently playing track. It is disabled automatically when no Spotify client ID or token is configured.
+Spotify uses Windows media-session events as the primary source for Spotify playing on this PC. A local song skip reaches the LCD on its next one-second status poll without calling Spotify's Web API. The Spotify Web API remains an optional 30-second fallback for playback on a phone, speaker, or another computer.
 
 1. Create a Spotify app at <https://developer.spotify.com/dashboard>.
 2. Add this redirect URI to the Spotify app:
@@ -118,6 +118,9 @@ On first use, a browser login opens and creates the ignored token file under `co
 
 Spotify display rules:
 
+- Active local Spotify is event-driven and takes precedence over the remote fallback.
+- When local Spotify is paused or absent, a playing remote Spotify device can appear through the fallback.
+- Local Windows playback needs no Spotify credentials; credentials are needed only for remote-device fallback.
 - Manual modes, Calendar, and active agent states override Spotify.
 - Playing Spotify rotates with weather and time above debug inputs.
 - Paused or inactive Spotify falls back to weather.
@@ -140,7 +143,11 @@ $env:DESK_DECK_TIME_HOLD_SECONDS = "4"
 $env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "1"
 $env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "0"
 $env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"
+$env:DESK_DECK_WINDOWS_MEDIA_ENABLED = "1"
+$env:DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS = "30"
 ```
+
+`GET /api/spotify/status` includes `source: "windows"` for active local playback and `source: "spotify_api"` for active remote fallback playback.
 
 ## Run
 

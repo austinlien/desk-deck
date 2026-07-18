@@ -13,7 +13,10 @@ $env:DESK_DECK_TIME_HOLD_SECONDS = "4"
 $env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "1"
 $env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "0"
 $env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"
-$env:DESK_DECK_SPOTIFY_CACHE_SECONDS = "5"
+# Windows media is the immediate source for local Spotify playback. The Web API
+# is used only when Spotify is not actively playing on this PC.
+$env:DESK_DECK_WINDOWS_MEDIA_ENABLED = "1"
+$env:DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS = "30"
 $env:DESK_DECK_SPOTIFY_ERROR_BACKOFF_SECONDS = "30"
 
 # Optional Calendar and weather overrides.

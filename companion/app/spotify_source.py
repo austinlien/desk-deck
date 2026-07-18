@@ -58,7 +58,10 @@ class SpotifySource:
         client_secret = os.getenv("DESK_DECK_SPOTIFY_CLIENT_SECRET")
         redirect_uri = os.getenv("DESK_DECK_SPOTIFY_REDIRECT_URI", DEFAULT_REDIRECT_URI)
         token_path = Path(os.getenv("DESK_DECK_SPOTIFY_TOKEN", DEFAULT_TOKEN_PATH))
-        cache_seconds = _float_env("DESK_DECK_SPOTIFY_CACHE_SECONDS", DEFAULT_CACHE_SECONDS)
+        cache_seconds = _float_env(
+            "DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS",
+            30.0,
+        )
         error_backoff_seconds = _float_env(
             "DESK_DECK_SPOTIFY_ERROR_BACKOFF_SECONDS",
             DEFAULT_ERROR_BACKOFF_SECONDS,
@@ -144,6 +147,7 @@ class SpotifySource:
             enabled=True,
             configured=True,
             available=True,
+            source="spotify_api",
             track=track,
             status=status,
         )

@@ -2,7 +2,7 @@
 
 ## Current Milestone
 
-Spotify MVP: show currently playing Spotify track from the Windows companion, scrolling long title/artist rows on the ESP32 LCD.
+Spotify hybrid playback: show local Spotify desktop tracks from Windows media-session events, with Spotify Web API remote-device fallback.
 
 ## What Changed
 
@@ -34,6 +34,9 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Added firmware-side chip temperature posting once per minute using `temperatureRead()`.
 - Added `AGENT / DONE` 5-second hold before falling back to weather.
 - Added optional Spotify currently-playing source in the companion.
+- Added Windows media-session Spotify detection as the primary, event-driven source for local desktop playback.
+- Added a hybrid Spotify source that uses the Web API only as a 30-second fallback for remote-device playback.
+- Added the Spotify diagnostic `source` field (`windows` or `spotify_api`) without changing the LCD status response.
 - Added `GET /api/spotify/status` for Spotify debugging.
 - Added Spotify status priority below Calendar and active agent states, above debug/weather.
 - Extended `/api/status` responses with optional `effect`, defaulting to `solid`.
@@ -99,6 +102,9 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
   - Consider showing current time alongside another useful context value, such as elapsed time in a game/session.
   - Define the source of the secondary value, priority rules, and LCD layout before implementation.
   - Resolve this TBD after the use case is clarified and either implemented or intentionally deferred.
+- Reduce the local Windows Spotify update latency.
+  - Current Windows media-session updates reach the LCD in roughly 0.5–1 second.
+  - Explore lowering the firmware status poll interval or adding a lightweight push mechanism while preserving reliable display behavior.
 
 ## Validation
 
@@ -120,12 +126,12 @@ Spotify MVP: show currently playing Spotify track from the Windows companion, sc
 - Long Spotify final-frame hold firmware build and upload succeeded to `COM5`; live companion was restarted.
 - Spotify API polling cache/backoff companion regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 44 tests passed.
 - Spotify API polling cache/backoff firmware regression passed with `C:\Users\Austin\.platformio\penv\Scripts\platformio.exe run`.
+- Recovered the stopped live companion with `.\scripts\start-companion.ps1 -RestartExisting`; Spotify authorization is valid and `/api/status` again returns the active track with green `scroll_once` display settings.
+- Hybrid Spotify regression passed with `.\.venv311\Scripts\python.exe -m pytest`: 48 tests passed.
+- Live companion restart confirmed the active Spotify track through Windows media sessions with `/api/spotify/status` reporting `source: "windows"`.
 
 ## Next Steps
 
-1. Create a Spotify app and configure `http://127.0.0.1:8888/callback` as a redirect URI.
-2. Copy `companion/local-env.example.ps1` to ignored `companion/secrets/local-env.ps1` and fill in Spotify client ID/secret.
-3. Start the companion from the repo root with `.\scripts\start-companion.ps1`.
-4. Complete the browser login from `GET /api/spotify/status`.
-5. Play a track and confirm the LCD shows title and artist in green.
-6. Confirm the LCD module's I2C electrical design before long-term 5 V use.
+1. Play and skip a local Spotify desktop track; confirm the LCD updates on its next one-second status poll.
+2. Keep Spotify API credentials only if remote-device playback (phone, speaker, or another computer) is desired.
+3. Confirm the LCD module's I2C electrical design before long-term 5 V use.

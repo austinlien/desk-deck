@@ -12,6 +12,7 @@ from .models import (
     SpotifyState,
     StatusInputs,
     WeatherState,
+    WorkState,
 )
 from .hybrid_spotify_source import HybridSpotifySource
 from .weather_source import WeatherSource
@@ -63,6 +64,21 @@ def set_agent_status(state: str) -> DisplayStatus:
 def reset_agent_status() -> DisplayStatus:
     status_engine.set_agent_status_value(None)
     return status_engine.select_status()
+
+
+@app.get("/api/work/status", response_model=WorkState)
+def get_work_status() -> WorkState:
+    return status_engine.get_work_state()
+
+
+@app.post("/api/work/start", response_model=WorkState)
+def start_work_session() -> WorkState:
+    return status_engine.start_work_session()
+
+
+@app.post("/api/work/stop", response_model=WorkState)
+def stop_work_session() -> WorkState:
+    return status_engine.stop_work_session()
 
 
 @app.post("/api/status/mode/{mode_name}", response_model=DisplayStatus)

@@ -2,14 +2,14 @@
 
 Desk Deck is a personal embedded desk-status display built around an ESP32-C3 and a 16x2 RGB I2C LCD.
 
-The current milestone is a Wi-Fi desk status display with a local Windows companion server, optional Google Calendar meeting status, optional Spotify currently-playing status, and a default weather screen.
+The current milestone is a Wi-Fi desk status display with a local Windows companion server, Google Calendar meeting status, event-driven local Spotify playback, a remote Spotify fallback, and default weather/time screens.
 
 ```text
 CHIP 68F
 OUT 74F 45%
 ```
 
-Future milestones will add Spotify status and richer offline behavior.
+Local Spotify track changes reach the companion through Windows media sessions and appear on the LCD's next poll. The companion uses Spotify's Web API only as a slower fallback for playback on another device.
 
 ## Current Scope
 
@@ -20,8 +20,12 @@ Future milestones will add Spotify status and richer offline behavior.
 - Wi-Fi connection
 - HTTP polling from a local companion server
 - Optional Google Calendar meeting status
-- Optional Spotify currently-playing status
+- Local Spotify title/artist with song-skip interrupts
+- Optional Spotify Web API fallback for remote-device playback
 - Default inside/outside weather display
+- Default time/date display
+- Demo recording cycle for display states
+- Personal elapsed-time work stopwatch with `HH:MM:SS` display
 - LCD status text and RGB backlight from server JSON
 
 ## Repository Layout

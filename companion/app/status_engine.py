@@ -2,7 +2,15 @@ import os
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from .models import CalendarState, DisplayStatus, SpotifyState, SpotifyTrack, StatusInputs, WeatherState
+from .models import (
+    CalendarState,
+    DisplayStatus,
+    SpotifyState,
+    SpotifyTrack,
+    StatusInputs,
+    WeatherState,
+    WorkState,
+)
 
 
 class CalendarStatusSource(Protocol):
@@ -24,6 +32,7 @@ class SpotifyStatusSource(Protocol):
 
 
 AGENT_DONE_HOLD_SECONDS = int(os.getenv("DESK_DECK_AGENT_DONE_HOLD_SECONDS", "5"))
+WORK_DONE_HOLD_SECONDS = int(os.getenv("DESK_DECK_WORK_DONE_HOLD_SECONDS", "5"))
 AGENT_ACTIVE_TTL_SECONDS = int(os.getenv("DESK_DECK_AGENT_ACTIVE_TTL_SECONDS", "300"))
 SPOTIFY_HOLD_SECONDS = int(os.getenv("DESK_DECK_SPOTIFY_HOLD_SECONDS", "4"))
 WEATHER_HOLD_SECONDS = int(os.getenv("DESK_DECK_WEATHER_HOLD_SECONDS", "5"))
@@ -114,6 +123,9 @@ active_mode: str | None = None
 agent_status: str | None = None
 agent_updated_at: datetime | None = None
 agent_done_at: datetime | None = None
+work_started_at: datetime | None = None
+work_completed_at: datetime | None = None
+work_completed_elapsed_seconds: int | None = None
 status_inputs = StatusInputs()
 calendar_source: CalendarStatusSource | None = None
 weather_source: WeatherStatusSource | None = None
@@ -180,12 +192,88 @@ def set_status_inputs(inputs: StatusInputs) -> None:
     status_inputs = inputs
 
 
+def start_work_session(now: datetime | None = None) -> WorkState:
+    global work_started_at, work_completed_at, work_completed_elapsed_seconds
+    work_started_at = now or datetime.now().astimezone()
+    work_completed_at = None
+    work_completed_elapsed_seconds = None
+    reset_spotify_interrupt()
+    reset_spotify_track_baseline()
+    return get_work_state(work_started_at)
+
+
+def stop_work_session(now: datetime | None = None) -> WorkState:
+    global work_started_at, work_completed_at, work_completed_elapsed_seconds
+    current = now or datetime.now().astimezone()
+    if work_started_at is None:
+        return get_work_state(current)
+
+    work_completed_elapsed_seconds = elapsed_seconds(work_started_at, current)
+    work_completed_at = current
+    work_started_at = None
+    return get_work_state(current)
+
+
+def get_work_state(now: datetime | None = None) -> WorkState:
+    current = now or datetime.now().astimezone()
+    if work_started_at is not None:
+        return WorkState(running=True, elapsed_seconds=elapsed_seconds(work_started_at, current))
+    return WorkState(
+        running=False,
+        completion_elapsed_seconds=work_completed_elapsed_seconds
+        if work_completion_is_visible(current)
+        else None,
+    )
+
+
+def elapsed_seconds(started_at: datetime, now: datetime) -> int:
+    return max(0, int((now - started_at).total_seconds()))
+
+
+def work_completion_is_visible(now: datetime) -> bool:
+    return (
+        work_completed_at is not None
+        and work_completed_elapsed_seconds is not None
+        and now - work_completed_at < timedelta(seconds=WORK_DONE_HOLD_SECONDS)
+    )
+
+
+def select_work_status(now: datetime) -> DisplayStatus | None:
+    if work_started_at is None:
+        return None
+    return DisplayStatus(
+        line1="WORKING",
+        line2=format_elapsed_time(elapsed_seconds(work_started_at, now)),
+        backlight="yellow",
+    )
+
+
+def select_work_completion_status(now: datetime) -> DisplayStatus | None:
+    if not work_completion_is_visible(now):
+        return None
+    return DisplayStatus(
+        line1="SESSION DONE",
+        line2=format_elapsed_time(work_completed_elapsed_seconds or 0),
+        backlight="green",
+    )
+
+
+def format_elapsed_time(total_seconds: int) -> str:
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
 def reset_state() -> None:
     global active_mode, agent_status, agent_updated_at, agent_done_at, status_inputs
+    global work_started_at, work_completed_at, work_completed_elapsed_seconds
     active_mode = None
     agent_status = None
     agent_updated_at = None
     agent_done_at = None
+    work_started_at = None
+    work_completed_at = None
+    work_completed_elapsed_seconds = None
     status_inputs = StatusInputs()
     reset_spotify_state()
 
@@ -312,6 +400,11 @@ def select_debug_spotify_status() -> DisplayStatus | None:
 def select_status(now: datetime | None = None) -> DisplayStatus:
     now = now or datetime.now().astimezone()
     priority_status = select_priority_status(now)
+    work_completion = select_work_completion_status(now)
+    if priority_status is not None and priority_status == work_completion:
+        mark_default_rotation_blocked()
+        return priority_status
+
     spotify = select_spotify_status()
     spotify_interrupt = select_spotify_interrupt(spotify, priority_status, now)
     if spotify_interrupt is not None:
@@ -338,11 +431,19 @@ def select_priority_status(now: datetime) -> DisplayStatus | None:
     if calendar.status is not None:
         return calendar.status
 
+    work_completion = select_work_completion_status(now)
+    if work_completion is not None:
+        return work_completion
+
     if agent_status in {"working", "waiting"} and is_active_agent_status_fresh(now):
         return AGENT_STATUSES[agent_status]
     if agent_status == "done" and agent_done_at is not None:
         if now - agent_done_at < timedelta(seconds=AGENT_DONE_HOLD_SECONDS):
             return AGENT_STATUSES["done"]
+
+    work_status = select_work_status(now)
+    if work_status is not None:
+        return work_status
 
     return None
 

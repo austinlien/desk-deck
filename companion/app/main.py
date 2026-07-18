@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 
 from . import status_engine
@@ -11,12 +13,24 @@ from .models import (
     StatusInputs,
     WeatherState,
 )
-from .spotify_source import SpotifySource
+from .hybrid_spotify_source import HybridSpotifySource
 from .weather_source import WeatherSource
 
-app = FastAPI(title="Desk Deck Companion Server")
+spotify_source = HybridSpotifySource.from_environment()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    spotify_source.start()
+    try:
+        yield
+    finally:
+        spotify_source.stop()
+
+
+app = FastAPI(title="Desk Deck Companion Server", lifespan=lifespan)
 status_engine.set_calendar_source(GoogleCalendarSource.from_environment())
-status_engine.set_spotify_source(SpotifySource.from_environment())
+status_engine.set_spotify_source(spotify_source)
 weather_source = WeatherSource.from_environment()
 status_engine.set_weather_source(weather_source)
 
@@ -33,7 +47,7 @@ def get_status_modes() -> dict[str, DisplayStatus]:
 
 @app.get("/api/agent/status")
 def get_agent_status() -> dict[str, str | None]:
-    return {"state": status_engine.agent_status}
+    return {"state": status_engine.get_agent_status_value()}
 
 
 @app.post("/api/agent/status/{state}", response_model=DisplayStatus)

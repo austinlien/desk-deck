@@ -14,6 +14,9 @@ class StatusInputs(BaseModel):
     notification: bool = False
     spotify_playing: bool = False
     spotify_paused: bool = False
+    spotify_title: str | None = None
+    spotify_artist: str | None = None
+    demo_default_rotation: bool = False
 
 
 class DebugState(BaseModel):
@@ -54,6 +57,7 @@ class SpotifyState(BaseModel):
     enabled: bool
     configured: bool
     available: bool
+    source: str | None = None
     track: SpotifyTrack | None = None
     status: DisplayStatus | None = None
     detail: str | None = None

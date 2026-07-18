@@ -85,11 +85,19 @@ ONLINE
 ## Spotify MVP Acceptance Criteria
 
 - `GET /api/spotify/status` reports whether Spotify is configured and available.
-- Playing Spotify returns full track title, full first artist, blue backlight, and scroll effect.
-- Firmware scrolls Spotify rows longer than 16 characters every 500 ms with brief start/end pauses.
+- Playing Spotify returns full track title, full first artist, green backlight, and scroll effect.
+- Spotify title and artist text with accents or typographic punctuation is normalized to LCD-safe ASCII.
+- Firmware scrolls Spotify rows longer than 16 characters every 400 ms with brief start/end pauses.
+- Playing Spotify rotates with the compact weather screen when no higher-priority state is active.
+- Fitting Spotify text holds for the configured short Spotify duration, then weather holds for the configured weather duration, then time holds for the configured time duration.
+- Long Spotify text uses `scroll_once`, reaches the final frame, holds briefly, then rotates to weather.
+- Spotify song changes briefly interrupt manual, Calendar, and active agent statuses.
+- Starting active agent `working` and `waiting` statuses resets the Spotify baseline so stale Spotify state does not immediately interrupt the agent screen.
+- Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
+- The first observed Spotify track after startup is only a baseline and does not interrupt higher-priority status.
 - Paused, inactive, non-track, or unavailable Spotify falls back to the next status source.
 - Manual mode, Calendar, and active agent states override Spotify.
-- Spotify overrides debug inputs and weather when active.
+- Spotify/weather/time rotation overrides debug inputs when Spotify is active.
 - Spotify credentials and tokens are kept out of Git under `companion/secrets/spotify/`.
 
 ## Test Procedure
@@ -257,7 +265,7 @@ Invoke-RestMethod http://127.0.0.1:8000/api/spotify/status
 Invoke-RestMethod http://127.0.0.1:8000/api/status
 ```
 
-Play a Spotify track and confirm the LCD shows the track title and artist in blue, scrolling rows longer than 16 characters. Pause playback and confirm the display falls back to weather or the next active higher-priority state.
+Play a Spotify track and confirm the LCD shows the track title and artist in green, then rotates to weather. Confirm rows longer than 16 characters scroll once to the final frame, hold briefly, then rotate to weather. While a manual, Calendar, or agent status is active, skip to a new song and confirm the new title appears briefly using the interrupted status color, then returns. Pause playback and confirm the display falls back to weather or the next active higher-priority state.
 
 ## Refactor Regression Checks
 

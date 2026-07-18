@@ -9,7 +9,7 @@ RgbColor colorFromName(const String& colorName) {
     return {255, 180, 0};
   }
   if (colorName == "green") {
-    return {0, 180, 40};
+    return {0, 210, 12};
   }
   if (colorName == "blue") {
     return {0, 80, 255};

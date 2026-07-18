@@ -5,11 +5,12 @@ import json
 import os
 import secrets
 import time
+import unicodedata
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
@@ -21,6 +22,8 @@ CURRENTLY_PLAYING_URL = "https://api.spotify.com/v1/me/player/currently-playing"
 SCOPE = "user-read-currently-playing"
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 DEFAULT_TOKEN_PATH = Path("secrets/spotify/token.json")
+DEFAULT_CACHE_SECONDS = 5.0
+DEFAULT_ERROR_BACKOFF_SECONDS = 30.0
 
 
 class SpotifySource:
@@ -30,11 +33,20 @@ class SpotifySource:
         client_secret: str | None,
         redirect_uri: str = DEFAULT_REDIRECT_URI,
         token_path: Path = DEFAULT_TOKEN_PATH,
+        cache_seconds: float = DEFAULT_CACHE_SECONDS,
+        error_backoff_seconds: float = DEFAULT_ERROR_BACKOFF_SECONDS,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
         self.token_path = token_path
+        self.cache_seconds = cache_seconds
+        self.error_backoff_seconds = error_backoff_seconds
+        self._clock = clock
+        self._cached_state: SpotifyState | None = None
+        self._cache_until = 0.0
+        self._retry_after = 0.0
 
     @classmethod
     def from_environment(cls) -> "SpotifySource | None":
@@ -46,6 +58,14 @@ class SpotifySource:
         client_secret = os.getenv("DESK_DECK_SPOTIFY_CLIENT_SECRET")
         redirect_uri = os.getenv("DESK_DECK_SPOTIFY_REDIRECT_URI", DEFAULT_REDIRECT_URI)
         token_path = Path(os.getenv("DESK_DECK_SPOTIFY_TOKEN", DEFAULT_TOKEN_PATH))
+        cache_seconds = _float_env(
+            "DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS",
+            30.0,
+        )
+        error_backoff_seconds = _float_env(
+            "DESK_DECK_SPOTIFY_ERROR_BACKOFF_SECONDS",
+            DEFAULT_ERROR_BACKOFF_SECONDS,
+        )
         if not client_id and not token_path.exists():
             return None
         return cls(
@@ -53,6 +73,8 @@ class SpotifySource:
             client_secret=client_secret,
             redirect_uri=redirect_uri,
             token_path=token_path,
+            cache_seconds=cache_seconds,
+            error_backoff_seconds=error_backoff_seconds,
         )
 
     def select_status(self) -> SpotifyState:
@@ -64,42 +86,81 @@ class SpotifySource:
                 detail="Spotify client ID or token is not configured.",
             )
 
-        try:
-            token = self._access_token()
-            payload = self._fetch_payload(token)
-            if payload is None:
-                return SpotifyState(enabled=True, configured=True, available=True)
+        now = self._clock()
+        if self._cached_state is not None and now < self._cache_until:
+            return self._cached_state
 
-            if not payload.get("is_playing"):
-                return SpotifyState(enabled=True, configured=True, available=True)
-            if payload.get("currently_playing_type") != "track":
-                return SpotifyState(enabled=True, configured=True, available=True)
-
-            item = payload.get("item") or {}
-            artists = item.get("artists") or []
-            title = item.get("name") or "Spotify"
-            artist = artists[0].get("name") if artists else "Unknown Artist"
-            track = SpotifyTrack(title=title, artist=artist, is_playing=True)
-            status = DisplayStatus(
-                line1=_normalize_line(title),
-                line2=_normalize_line(artist),
-                backlight="blue",
-                effect="scroll",
-            )
+        if now < self._retry_after:
+            if self._cached_state is not None:
+                return self._cached_state
             return SpotifyState(
                 enabled=True,
                 configured=True,
-                available=True,
-                track=track,
-                status=status,
+                available=False,
+                detail="Spotify request is in backoff after a recent error.",
             )
+
+        try:
+            token = self._access_token()
+            payload = self._fetch_payload(token)
+            state = self._state_from_payload(payload)
+            self._cached_state = state
+            self._cache_until = now + self.cache_seconds
+            self._retry_after = 0.0
+            return state
         except Exception as exc:
-            return SpotifyState(
+            self._retry_after = now + self._backoff_seconds(exc)
+            if self._cached_state is not None:
+                return self._cached_state
+
+            state = SpotifyState(
                 enabled=True,
                 configured=bool(self.client_id or self.token_path.exists()),
                 available=False,
                 detail=str(exc),
             )
+            self._cached_state = state
+            self._cache_until = self._retry_after
+            return state
+
+    def _state_from_payload(self, payload: dict[str, Any] | None) -> SpotifyState:
+        if payload is None:
+            return SpotifyState(enabled=True, configured=True, available=True)
+
+        if not payload.get("is_playing"):
+            return SpotifyState(enabled=True, configured=True, available=True)
+        if payload.get("currently_playing_type") != "track":
+            return SpotifyState(enabled=True, configured=True, available=True)
+
+        item = payload.get("item") or {}
+        artists = item.get("artists") or []
+        title = item.get("name") or "Spotify"
+        artist = artists[0].get("name") if artists else "Unknown Artist"
+        track = SpotifyTrack(title=title, artist=artist, is_playing=True)
+        status = DisplayStatus(
+            line1=_normalize_line(title),
+            line2=_normalize_line(artist),
+            backlight="green",
+            effect="scroll",
+        )
+        return SpotifyState(
+            enabled=True,
+            configured=True,
+            available=True,
+            source="spotify_api",
+            track=track,
+            status=status,
+        )
+
+    def _backoff_seconds(self, exc: Exception) -> float:
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+            retry_after = exc.response.headers.get("Retry-After")
+            if retry_after is not None:
+                try:
+                    return max(1.0, float(retry_after))
+                except ValueError:
+                    pass
+        return self.error_backoff_seconds
 
     def _fetch_payload(self, token: str) -> dict[str, Any] | None:
         response = httpx.get(
@@ -193,7 +254,40 @@ class SpotifySource:
 
 
 def _normalize_line(value: str) -> str:
-    return " ".join(value.split()).strip()
+    replacements = {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2026": "...",
+        "\u00d7": "x",
+        "\u00f8": "o",
+        "\u00d8": "O",
+        "\u00df": "ss",
+        "\u00e6": "ae",
+        "\u00c6": "AE",
+        "\u0153": "oe",
+        "\u0152": "OE",
+    }
+    normalized = value
+    for source, replacement in replacements.items():
+        normalized = normalized.replace(source, replacement)
+
+    normalized = unicodedata.normalize("NFKD", normalized)
+    ascii_line = normalized.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_line.split()).strip()
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
 
 
 def _with_expiry(token: dict[str, Any]) -> dict[str, Any]:

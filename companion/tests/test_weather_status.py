@@ -47,6 +47,20 @@ def test_weather_is_default_status() -> None:
     assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
 
 
+def test_weather_rotates_to_time_status() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+
+    weather = status_engine.select_status(now)
+    time_status = status_engine.select_status(now + timedelta(seconds=status_engine.WEATHER_HOLD_SECONDS))
+    next_weather = status_engine.select_status(
+        now + timedelta(seconds=status_engine.WEATHER_HOLD_SECONDS + status_engine.TIME_HOLD_SECONDS)
+    )
+
+    assert weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+    assert time_status == DisplayStatus(line1="9:00 AM", line2="THU JUL 16", backlight="green")
+    assert next_weather == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+
+
 def test_agent_done_holds_briefly_then_returns_to_weather() -> None:
     now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
     status_engine.set_agent_status_value("done", now=now)
@@ -61,6 +75,43 @@ def test_working_agent_still_overrides_weather() -> None:
     status = status_engine.select_status()
 
     assert status == status_engine.AGENT_STATUSES["working"]
+
+
+def test_working_agent_expires_after_active_ttl() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    status_engine.set_agent_status_value("working", now=now)
+
+    status = status_engine.select_status(now + timedelta(seconds=status_engine.AGENT_ACTIVE_TTL_SECONDS))
+
+    assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+
+
+def test_waiting_agent_expires_after_active_ttl() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    status_engine.set_agent_status_value("waiting", now=now)
+
+    status = status_engine.select_status(now + timedelta(seconds=status_engine.AGENT_ACTIVE_TTL_SECONDS))
+
+    assert status == DisplayStatus(line1="CHIP 68F", line2="OUT 74F 45%", backlight="green")
+
+
+def test_agent_status_refresh_extends_active_ttl() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    status_engine.set_agent_status_value("working", now=now)
+    status_engine.set_agent_status_value("working", now=now + timedelta(seconds=250))
+
+    status = status_engine.select_status(now + timedelta(seconds=500))
+
+    assert status == status_engine.AGENT_STATUSES["working"]
+
+
+def test_expired_agent_status_endpoint_reports_none() -> None:
+    now = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    status_engine.set_agent_status_value("working", now=now)
+
+    state = status_engine.get_agent_status_value(now + timedelta(seconds=status_engine.AGENT_ACTIVE_TTL_SECONDS))
+
+    assert state is None
 
 
 def test_weather_source_formats_inside_outside_and_humidity() -> None:

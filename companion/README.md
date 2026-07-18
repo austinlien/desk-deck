@@ -74,13 +74,14 @@ Optional environment variables:
 $env:DESK_DECK_WEATHER_LOCATION = "San Jose, CA"
 $env:DESK_DECK_INSIDE_TEMP_OFFSET_F = "0"
 $env:DESK_DECK_AGENT_DONE_HOLD_SECONDS = "5"
+$env:DESK_DECK_AGENT_ACTIVE_TTL_SECONDS = "300"
 ```
 
-`AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset or changed.
+`AGENT / DONE` remains visible for 5 seconds, then the display falls back to the default weather screen. `AGENT / WORKING` and `AGENT / WAITING` stay active until reset, changed, or the active-state TTL expires.
 
 ## Spotify MVP
 
-Spotify support uses the Spotify Web API to show the currently playing track. It is disabled automatically when no Spotify client ID or token is configured.
+Spotify uses Windows media-session events as the primary source for Spotify playing on this PC. A local song skip reaches the LCD on its next one-second status poll without calling Spotify's Web API. The Spotify Web API remains an optional 30-second fallback for playback on a phone, speaker, or another computer.
 
 1. Create a Spotify app at <https://developer.spotify.com/dashboard>.
 2. Add this redirect URI to the Spotify app:
@@ -89,7 +90,16 @@ Spotify support uses the Spotify Web API to show the currently playing track. It
 http://127.0.0.1:8888/callback
 ```
 
-3. Set these environment variables before starting the companion server:
+3. Copy the local environment template and fill in the Spotify values:
+
+```powershell
+Copy-Item .\local-env.example.ps1 .\secrets\local-env.ps1
+notepad .\secrets\local-env.ps1
+```
+
+The `companion/secrets/local-env.ps1` file is ignored by Git and is loaded by the repo-local startup script.
+
+Equivalent environment variables:
 
 ```powershell
 $env:DESK_DECK_SPOTIFY_CLIENT_ID = "your_spotify_client_id"
@@ -108,18 +118,55 @@ On first use, a browser login opens and creates the ignored token file under `co
 
 Spotify display rules:
 
+- Active local Spotify is event-driven and takes precedence over the remote fallback.
+- The companion also refreshes the local Windows media session four times per second as a safeguard when Spotify begins playing after the companion starts; this does not call Spotify's Web API.
+- When local Spotify is paused or absent, a playing remote Spotify device can appear through the fallback.
+- Local Windows playback needs no Spotify credentials; credentials are needed only for remote-device fallback.
 - Manual modes, Calendar, and active agent states override Spotify.
-- Playing Spotify overrides debug inputs and weather.
+- Playing Spotify rotates with weather and time above debug inputs.
 - Paused or inactive Spotify falls back to weather.
 - Row 1 shows the full track title and scrolls on the firmware when needed.
 - Row 2 shows the full first artist and scrolls on the firmware when needed.
-- Backlight is blue.
+- Title and artist text is normalized to LCD-safe ASCII before display.
+- Backlight is green, using RGB `0, 210, 12` on the firmware.
+- Fitting Spotify text shows for 4 seconds, then weather shows for 5 seconds, then time shows for 4 seconds.
+- Long Spotify text scrolls once to the final frame at 400 ms per frame, holds the final frame briefly, then rotates to weather.
+- Song changes briefly interrupt manual, Calendar, and active agent statuses for 5 seconds.
+- Song-change interrupts inherit the interrupted status backlight color, then return to normal priority.
+- Starting `AGENT / WORKING` or `AGENT / WAITING` resets the Spotify baseline, so stale Spotify state does not immediately interrupt the agent screen; later track changes still interrupt briefly.
+
+Optional rotation environment variables:
+
+```powershell
+$env:DESK_DECK_SPOTIFY_HOLD_SECONDS = "4"
+$env:DESK_DECK_WEATHER_HOLD_SECONDS = "5"
+$env:DESK_DECK_TIME_HOLD_SECONDS = "4"
+$env:DESK_DECK_SPOTIFY_SCROLL_END_HOLD_SECONDS = "1"
+$env:DESK_DECK_SPOTIFY_SCROLL_DISPLAY_SYNC_SECONDS = "0"
+$env:DESK_DECK_SPOTIFY_INTERRUPT_SECONDS = "5"
+$env:DESK_DECK_WINDOWS_MEDIA_ENABLED = "1"
+$env:DESK_DECK_SPOTIFY_REMOTE_POLL_SECONDS = "30"
+```
+
+`GET /api/spotify/status` includes `source: "windows"` for active local playback and `source: "spotify_api"` for active remote fallback playback.
 
 ## Run
 
 ```powershell
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\scripts\start-companion.ps1
 ```
+
+Run this command from the repository root. It loads `companion/secrets/local-env.ps1` when present, then starts Uvicorn from the companion directory.
+
+## Demo recording cycle
+
+With the companion running, use the repo-root demo script to cycle through notification, meeting, agent, song-skip, music, temperature, and time states for a recording:
+
+```powershell
+.\scripts\demo-cycle.ps1
+```
+
+Each state stays visible for five seconds by default. `MEETING / NOW` flashes red, `MR BRIGHTSIDE / THE KILLERS` interrupts `AGENT / WORKING`, and `ONE DANCE / DRAKE` precedes the final temperature/time rotation. Use `-HoldSeconds 3` for a faster recording or `-Loops 0` to repeat until you press `Ctrl+C`. The script always resets debug and agent state when it finishes.
 
 Find the Windows computer's LAN IP with:
 
@@ -152,16 +199,16 @@ online        DESK DECK / ONLINE / green
 idle          IDLE / READY / green
 meeting_soon  MEETING / IN 5 / yellow
 meeting       IN A MEETING / BUSY / red
-music         NOW PLAYING / TEST TRACK / blue
+music         NOW PLAYING / TEST TRACK / green
 notify        SERVER TEST / NOTICE / purple
-spotify_paused PAUSED / TEST TRACK / blue
+spotify_paused PAUSED / TEST TRACK / green
 ```
 
 Manual modes override debug inputs until reset.
 
 ## Agent Status Light
 
-Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset.
+Agent status is a high-priority override for local coding-agent state. It wins over manual modes and debug inputs until reset. Active `working` and `waiting` states also expire after `DESK_DECK_AGENT_ACTIVE_TTL_SECONDS`, defaulting to 300 seconds, so the display recovers if an agent run exits without clearing its state.
 
 Preferred repo-local scripts:
 
